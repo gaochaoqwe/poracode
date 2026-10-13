@@ -15,6 +15,10 @@ import { Button, Select, ToggleSwitch } from "@/renderer/components/common";
 import { updateWorkspaceProfile } from "@/renderer/actions/workspaceActions";
 import { useAgentStatusesStore } from "@/renderer/state/agentStatusesStore";
 import { useSharedSettings } from "@/renderer/state/sharedSettingsStore";
+import {
+  resolveWorkspaceCategory,
+  resolveWorkspaceScenarioScope,
+} from "@/renderer/state/workspaceSelectors";
 import { ResponsibilityList, TagInput } from "./WorkspaceRoleFields";
 import { WorkspaceCapabilitiesEditor } from "./WorkspaceCapabilitiesEditor";
 
@@ -85,6 +89,13 @@ export function WorkspaceEmployeeEditor(props: {
   // agent statuses; agent instances (auth profiles) live in shared settings.
   const agents = useAgentStatusesStore((state) => state.agentStatuses);
   const agentInstances = useSharedSettings((state) => state.agentInstances);
+  const workspaces = useSharedSettings((state) => state.workspaces);
+  // A 岗位 with no domain/list of its own inherits its primary container's —
+  // show that effective scope here so the editor never contradicts the sidebar
+  // (saving still persists only the workspace's own explicit fields).
+  const effectiveCategory = resolveWorkspaceCategory(workspaces, workspace.id) ?? "general";
+  const effectiveScenarioIds = resolveWorkspaceScenarioScope(workspaces, workspace.id);
+  const effectiveScenarioCount = effectiveScenarioIds?.length ?? 0;
 
   const providerOptions = agents.map((agent) => ({ id: agent.kind, label: agent.label }));
   const selectedAgent = agents.find((agent) => agent.kind === agentKind);
@@ -162,7 +173,7 @@ export function WorkspaceEmployeeEditor(props: {
                     id: c,
                     label: i18n._(SCENARIO_CATEGORY_LABELS[c]),
                   }))}
-                  value={category ?? "general"}
+                  value={effectiveCategory}
                   onChange={(value) => {
                     const next = value as ScenarioCategory;
                     setCategory(next);
@@ -172,11 +183,11 @@ export function WorkspaceEmployeeEditor(props: {
                   }}
                 />
                 <p className="text-xs text-muted">
-                  {defaultScenarioIds.length === 0 ? (
+                  {effectiveScenarioCount === 0 ? (
                     <Trans>Shows every scenario</Trans>
                   ) : (
                     <Plural
-                      value={defaultScenarioIds.length}
+                      value={effectiveScenarioCount}
                       one="# default scenario"
                       other="# default scenarios"
                     />

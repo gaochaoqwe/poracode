@@ -7,11 +7,12 @@ import {
   type Thread,
   type Workspace,
 } from "@/shared/contracts";
+import { DEFAULT_SCENARIO_IDS_BY_CATEGORY } from "@/renderer/scenarios/catalog";
 import { isHomeProjectId } from "@/shared/homeScope";
 import { useAppStore } from "./appStore";
 import { useSharedSettings } from "./sharedSettingsStore";
 import { useActiveWorkspaceId } from "./workspaceStore";
-import { workspaceScopeIds } from "./workspaceHierarchy";
+import { isPrimaryWorkspace, workspaceScopeIds } from "./workspaceHierarchy";
 
 /**
  * Workspace-id lookup cached on the identity of the settings array. The list
@@ -71,24 +72,93 @@ export function useWorkspaceProjectIds(): string[] {
 }
 
 /**
- * Scenario ids the active workspace surfaces by default. `undefined` means
- * "show every scenario" — the case for workspaces with no explicit list (the
- * general/test defaults, or a workspace created before this field existed). An
- * explicit empty array means "show none".
+ * Scenario ids a workspace surfaces by default. `undefined` means "show every
+ * scenario" — the case for workspaces with no explicit list (the general/test
+ * defaults, or a workspace created before this field existed). An explicit
+ * empty array means "show none".
+ *
+ * Resolution order (see {@link resolveWorkspaceScenarioScope}): the workspace's
+ * own list wins, then its own task domain, then — for a secondary (二级) 岗位
+ * with neither — its primary (一级) container's list/domain. This last step is
+ * what scopes the scenario list to the active 岗位 instead of showing every
+ * scenario when the user picks a team member in the workspace switcher.
  */
 export function useActiveWorkspaceScenarios(): readonly string[] | undefined {
   const activeWorkspaceId = useActiveWorkspaceId();
-  return useSharedSettings(
-    (state) => state.workspaces.find((w) => w.id === activeWorkspaceId)?.defaultScenarioIds,
+  return useSharedSettings((state) =>
+    resolveWorkspaceScenarioScope(state.workspaces, activeWorkspaceId),
   );
 }
 
-/** Task domain of the active workspace, if it has one. */
+/**
+ * Task domain of the active workspace, with the same primary-container
+ * inheritance as {@link resolveWorkspaceScenarioScope}: an explicit category
+ * wins, otherwise a secondary employee inherits its container's domain.
+ */
 export function useActiveWorkspaceCategory(): ScenarioCategory | undefined {
   const activeWorkspaceId = useActiveWorkspaceId();
-  return useSharedSettings(
-    (state) => state.workspaces.find((w) => w.id === activeWorkspaceId)?.category,
+  return useSharedSettings((state) =>
+    resolveWorkspaceCategory(state.workspaces, activeWorkspaceId),
   );
+}
+
+/** Category defaults for a workspace that only carries a domain, not a list. */
+function defaultScenarioIdsForCategory(
+  category: ScenarioCategory | undefined,
+): readonly string[] | undefined {
+  if (category === undefined) return undefined;
+  const ids = DEFAULT_SCENARIO_IDS_BY_CATEGORY[category];
+  // A category with no scenarios of its own shows every scenario rather than
+  // none (mirrors the default-workspace seeding rule).
+  return ids.length > 0 ? ids : undefined;
+}
+
+/**
+ * Scenario ids a workspace surfaces, resolving org-tree inheritance. Explicit
+ * fields on the workspace itself always win; a secondary (二级) 岗位 that has
+ * neither its own list nor its own domain inherits its primary (一级) container's
+ * list/domain, so clicking any 岗位 in the workspace switcher scopes the sidebar
+ * scenario list to that post's work. Pure function — cheap to unit-test.
+ */
+export function resolveWorkspaceScenarioScope(
+  workspaces: readonly Workspace[],
+  workspaceId: string | null,
+): readonly string[] | undefined {
+  const workspace = workspaceId ? workspaces.find((w) => w.id === workspaceId) : undefined;
+  if (!workspace) return undefined;
+  if (workspace.defaultScenarioIds !== undefined) return workspace.defaultScenarioIds;
+  const own = defaultScenarioIdsForCategory(workspace.category);
+  if (own !== undefined) return own;
+  if (workspace.roleRank !== undefined && workspace.parentWorkspaceId) {
+    const container = workspaces.find(
+      (w) => w.id === workspace.parentWorkspaceId && isPrimaryWorkspace(w),
+    );
+    if (container) {
+      if (container.defaultScenarioIds !== undefined) return container.defaultScenarioIds;
+      const inherited = defaultScenarioIdsForCategory(container.category);
+      if (inherited !== undefined) return inherited;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Task domain of a workspace, resolving the same primary-container inheritance
+ * as {@link resolveWorkspaceScenarioScope}. Pure function — cheap to unit-test.
+ */
+export function resolveWorkspaceCategory(
+  workspaces: readonly Workspace[],
+  workspaceId: string | null,
+): ScenarioCategory | undefined {
+  const workspace = workspaceId ? workspaces.find((w) => w.id === workspaceId) : undefined;
+  if (!workspace) return undefined;
+  if (workspace.category !== undefined) return workspace.category;
+  if (workspace.roleRank !== undefined && workspace.parentWorkspaceId) {
+    return workspaces.find(
+      (w) => w.id === workspace.parentWorkspaceId && isPrimaryWorkspace(w),
+    )?.category;
+  }
+  return undefined;
 }
 
 /**
