@@ -126,8 +126,8 @@ describe("ensureOrganizationSeed", () => {
 
     // v1 default names are upgraded to the current names.
     expect(byId.get("org-oa")!.name).toBe("办公主管");
-    expect(byId.get("org-test-project-lead")!.name).toBe("项目主管");
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
+    expect(byId.get("org-test-project-lead")!.name).toBe("测试项目主管");
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
     expect(byId.get("org-test-designer-1")!.name).toBe("设计师（文档审查）");
     expect(byId.get("org-test-qa-1")!.name).toBe("质量审查（表单）");
 
@@ -140,7 +140,7 @@ describe("ensureOrganizationSeed", () => {
     expect(settings.organizationSeedVersion).toBe(ORGANIZATION_SEED_VERSION);
   });
 
-  it("v2 seed: renames default names and keeps project-lead at rank 2", () => {
+  it("v2 seed: renames default names and moves project-lead to rank 3", () => {
     // A v2 install: containers exist; org roles carry the v2 names and the v2
     // ranks (project-lead was rank 2). designer-2's name was customized by user.
     const v2Names: Record<string, string> = {
@@ -177,9 +177,9 @@ describe("ensureOrganizationSeed", () => {
     expect(byId.get("org-test-designer-5")!.name).toBe("设计师（编写报告）");
     expect(byId.get("org-test-qa-1")!.name).toBe("质量审查（表单）");
     expect(byId.get("org-test-qa-2")!.name).toBe("质量审查（报告）");
-    expect(byId.get("org-test-project-lead")!.name).toBe("项目主管");
-    // project-lead carried the v2 default rank 2 → v9 keeps it at management rank 2.
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
+    expect(byId.get("org-test-project-lead")!.name).toBe("测试项目主管");
+    // project-lead carried the v2 default rank 2 → v10 moves it to execution rank 3.
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
     // User-customized name preserved.
     expect(byId.get("org-test-designer-2")!.name).toBe("我的静态分析岗");
 
@@ -294,7 +294,7 @@ describe("ensureOrganizationSeed", () => {
 
     // v3 display names.
     const expectedNames: Record<string, string> = {
-      "org-test-project-lead": "项目主管",
+      "org-test-project-lead": "测试项目主管",
       "org-test-designer-1": "设计师（文档审查）",
       "org-test-designer-2": "设计师（静态分析）",
       "org-test-designer-3": "设计师（代码审查）",
@@ -306,8 +306,8 @@ describe("ensureOrganizationSeed", () => {
     for (const [id, name] of Object.entries(expectedNames)) {
       expect(byId.get(id)!.name).toBe(name);
     }
-    // project-lead is a permanent management employee (rank 2).
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
+    // project-lead is a permanent management employee at execution rank 3.
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
   });
 
   it("seeds roles with no provider binding and approval required", () => {
@@ -508,7 +508,7 @@ describe("ensureOrganizationSeed", () => {
       expect(w.parentWorkspaceId).toBe(testContainerId);
       expect(w.teamId).toBe("mgmt-team");
     }
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
     expect(byId.get("org-dev-lead")!.name).toBe("开发主管");
     expect(byId.get("org-dev-lead")!.roleRank).toBe(2);
 

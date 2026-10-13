@@ -44,7 +44,7 @@ export interface FlowNode {
  * 软件测评流水线 P0~P14 节点表。
  *
  * 执行岗位与组织种子的 roleId 对齐（管理层：测试主管 org-test-lead /
- * 项目主管 org-test-project-lead；执行层：org-test-team 的 5 名设计师 +
+ * 测试项目主管 org-test-project-lead；执行层：org-test-team 的 5 名设计师 +
  * 2 名质量审查）。P0 由测试主管负责（含 组织资产/参考资料/本项目资料
  * 三个子目录的准备），P2 测试策划也由测试主管执行。
  *

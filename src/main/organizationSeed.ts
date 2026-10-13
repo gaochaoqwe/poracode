@@ -32,10 +32,13 @@ import { SIMULATED_FS_ROOT } from "@/shared/digitalEmployee/flowLayout";
  * preparation duty (组织资产/参考资料 into P0), all workspace paths point at the
  * simulated company file system (`模拟公司电脑文件夹`) instead of `D:\Org`, and
  * the execution team is the P-node workforce (7 roles, per-project release).
- * Bump whenever the tree changes in a way that must re-apply / migrate existing
- * installs.
+ * v10 = the project lead is renamed 测试项目主管 and demoted from management
+ * rank 2 to execution rank 3 (user request), matching its flow ownership; its
+ * stale `D:\Org\11-项目主管` workspace path joins the simulated company file
+ * system. Bump whenever the tree changes in a way that must re-apply / migrate
+ * existing installs.
  */
-export const ORGANIZATION_SEED_VERSION = 9;
+export const ORGANIZATION_SEED_VERSION = 10;
 
 /**
  * A universal, non-optional baseline skill every employee must carry (authorized
@@ -252,15 +255,15 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
   },
   {
     id: "org-test-project-lead",
-    name: "项目主管",
+    name: "测试项目主管",
     previousNames: ["测试项目主管", "项目主管"],
-    roleRank: 2,
+    roleRank: 3,
     parentContainerKey: "test",
     teamId: "mgmt-team",
     persona:
-      "你是项目主管，挂在软件测试岗的管理团队之下，是测试主管（org-test-lead）的直接下属，作为永久员工常驻。你负责 P1 准入审查：只审查资料齐套性——配置项测试需需求规格说明+代码，回归测试需影响域分析报告+变更前后两版代码，输出 通过/不通过，审查结论写入 P1 节点文件夹。你还把控测试项目的进度与质量：跟踪每个项目在 P0~P14 节点文件夹上的流转位置，对照测试策划检查各环节产出是否按时按质完成，发现滞后或质量偏差时向测试主管预警并协调执行层岗位补位；项目流转到 P14 时验收最终报告。",
+      "你是测试项目主管，挂在软件测试岗的管理团队之下，是测试主管（org-test-lead）的直接下属，作为永久员工常驻。你负责 P1 准入审查：只审查资料齐套性——配置项测试需需求规格说明+代码，回归测试需影响域分析报告+变更前后两版代码，输出 通过/不通过，审查结论写入 P1 节点文件夹。你还把控测试项目的进度与质量：跟踪每个项目在 P0~P14 节点文件夹上的流转位置，对照测试策划检查各环节产出是否按时按质完成，发现滞后或质量偏差时向测试主管预警并协调执行层岗位补位；项目流转到 P14 时验收最终报告。",
     previousPersona:
-      "你是测试项目主管，挂在软件测试岗之下，是测试主管（org-test-lead）的直接下属，把控测试项目的进度与质量。你跟踪每个测试项目在测评中心流水线上走到了哪一步、总 Excel 测试表单各阶段表（项目信息表+策划表、需求分析表、用例表、问题报告单）是否按节点填齐填对，对照测试策划检查各环节产出是否按时按质完成。发现进度滞后或质量偏差时，你及时向测试主管预警并协调设计师/质量审查岗位补位，不让问题流到下一阶段。",
+      "你是项目主管，挂在软件测试岗的管理团队之下，是测试主管（org-test-lead）的直接下属，作为永久员工常驻。你负责 P1 准入审查：只审查资料齐套性——配置项测试需需求规格说明+代码，回归测试需影响域分析报告+变更前后两版代码，输出 通过/不通过，审查结论写入 P1 节点文件夹。你还把控测试项目的进度与质量：跟踪每个项目在 P0~P14 节点文件夹上的流转位置，对照测试策划检查各环节产出是否按时按质完成，发现滞后或质量偏差时向测试主管预警并协调执行层岗位补位；项目流转到 P14 时验收最终报告。",
     responsibilities: [
       "执行 P1 准入审查：只审查资料齐套性，输出 通过/不通过",
       "把控测试项目进度，跟踪 P0~P14 节点文件夹流转位置",
@@ -286,7 +289,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\11-项目主管"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -640,14 +643,17 @@ export function ensureOrganizationSeed(
       }
       // v9: the project lead becomes a permanent management employee. Move it
       // out of the execution team only while it still sits on the seed default
-      // team (a user-chosen team is preserved), and demote the v8 default rank 3
-      // to 2 (management level) — a user-set rank is preserved.
+      // team (a user-chosen team is preserved).
+      // v10: the project lead is renamed 测试项目主管 and demoted from management
+      // rank 2 to execution rank 3 (per user request). Any seed-default rank
+      // (2 from v1/v2/v9, 3 from v8) becomes 3; a rank the user set themselves
+      // (anything else) is preserved.
       if (role.id === "org-test-project-lead") {
         if (patched.teamId === "org-test-team" || patched.teamId === undefined) {
           patched.teamId = "mgmt-team";
         }
-        if (patched.roleRank === 3) {
-          patched.roleRank = 2;
+        if (patched.roleRank === 2 || patched.roleRank === 3) {
+          patched.roleRank = 3;
         }
       }
       // v4: seed the role's default skillIds only when the workspace has none
