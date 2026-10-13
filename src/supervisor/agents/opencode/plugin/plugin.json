@@ -1,0 +1,5 @@
+{
+  "name": "agentemployee-status-opencode",
+  "version": "1.8.0",
+  "description": "OpenCode plugin forwarder for AgentEmployee thread status"
+}

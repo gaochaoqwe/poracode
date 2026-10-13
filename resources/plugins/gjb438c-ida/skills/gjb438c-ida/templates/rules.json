@@ -1,0 +1,71 @@
+{
+  "identityLineAnchors": {
+    "document_id": "文档标识号：TN/x-DO-DS-V{N.xx}；",
+    "title": "标题：",
+    "project_name": "软件名称：",
+    "short_name": "软件缩写：",
+    "version": "软件版本号。"
+  },
+  "identityRules": [
+    { "key": "identity.document_id", "anchor": "文档标识号：TN/x-DO-DS-V{N.xx}；", "field": "document.id.content", "prefix": "文档标识号：", "suffix": "；", "expected": 1 },
+    { "key": "identity.title", "anchor": "标题：", "field": "document.title.content", "prefix": "标题：", "suffix": "", "expected": 1 },
+    { "key": "identity.project_name", "anchor": "软件名称：", "field": "project.name.content", "prefix": "软件名称：", "suffix": "", "expected": 1 },
+    { "key": "identity.short_name", "anchor": "软件缩写：", "field": "project.short_name.content", "prefix": "软件缩写：", "suffix": "", "expected": 1 },
+    { "key": "identity.version", "anchor": "软件版本号。", "field": "project.version.content", "prefix": "软件版本号：", "suffix": "。", "expected": 1 }
+  ],
+  "patternOverrides": {},
+  "coverRules": [
+    { "key": "cover.project_name", "anchor": "外部型号+产品名称", "field": "project.name.content", "prefix": "", "suffix": "", "expected": 2 },
+    { "key": "cover.document_title", "anchor": "影响域分析报告", "field": "document.title.content", "prefix": "", "suffix": "", "expected": 2 },
+    { "key": "cover.short_name", "anchor": "产品型号-XXXX", "field": "project.short_name.content", "prefix": "产品型号-", "suffix": "", "expected": 2 },
+    { "key": "cover.company", "anchor": "XXXXXXXX公司", "field": "project.company.content", "prefix": "", "suffix": "", "expected": 1 },
+    { "key": "cover.date", "anchor": "XXXX年XX月XX日", "field": "document.date.content", "prefix": "", "suffix": "", "expected": 1 },
+    { "key": "cover.classification", "anchor": "密  级： 公开", "field": "document.classification.content", "prefix": "密  级： ", "suffix": "", "expected": 1 },
+    { "key": "cover.phase", "anchor": "阶  段：     ", "field": "document.phase.content", "prefix": "阶  段： ", "suffix": "", "expected": 1 },
+    { "key": "cover.version", "anchor": "版  次： A 版", "field": "project.version.content", "prefix": "版  次： ", "suffix": "", "expected": 1 }
+  ],
+  "insertionParentScope": "placeholder",
+  "insertionParentRules": {
+    "3.1": {
+      "parent_title": "需求变更及其影响域分析",
+      "summary_anchor": "本条应逐项分析需求变更及其对关联需求、设计和编码的影响。",
+      "end_before_title": "设计变更及其影响域分析",
+      "prototype_title_anchor": "3.1.X <变更需求>",
+      "prototype_body_anchor": "本条描述该需求变更的依据",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_titles": {
+        "0": "3.1.X <变更需求>",
+        "1": "3.1.X.Y <子节>"
+      }
+    },
+    "3.2": {
+      "parent_title": "设计变更及其影响域分析",
+      "summary_anchor": "本条应逐项分析设计变更及其对关联设计和编码的影响。",
+      "end_before_title": "代码变更及其影响分析",
+      "prototype_title_anchor": "3.2.X <变更设计>",
+      "prototype_body_anchor": "本条描述该设计变更的依据",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_titles": {
+        "0": "3.2.X <变更设计>",
+        "1": "3.2.X.Y <子节>"
+      }
+    },
+    "3.3": {
+      "parent_title": "代码变更及其影响分析",
+      "summary_anchor": "本条应逐项分析代码变更及其对关联编码的影响。",
+      "end_before_title": "对其他关联软硬件的影响",
+      "prototype_title_anchor": "3.3.X <变更代码>",
+      "prototype_body_anchor": "本条描述该代码变更的依据",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_titles": {
+        "0": "3.3.X <变更代码>",
+        "1": "3.3.X.Y <子节>"
+      }
+    }
+  },
+  "headingSeparator": "chapter3",
+  "captionMode": "strict"
+}

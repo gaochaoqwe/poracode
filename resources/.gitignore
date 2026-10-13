@@ -1,0 +1,5 @@
+# The actual npm pack tarball is not committed — it is generated at build time
+# from `manifest.json` (see scripts/prepare-cline-runtime.mjs). Committing the
+# manifest keeps the *contract* version-controlled without bloating git history
+# with ~50-150MB binaries per Cline release.
+cline-*.tgz

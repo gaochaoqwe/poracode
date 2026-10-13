@@ -1,0 +1,5 @@
+{
+  "name": "agentemployee-status-gemini",
+  "version": "1.2.3",
+  "description": "Gemini CLI lifecycle hook forwarder for AgentEmployee thread status"
+}

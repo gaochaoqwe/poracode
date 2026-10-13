@@ -1,0 +1,7 @@
+{
+  "name": "agentemployee-status-copilot",
+  "version": "1.0.3",
+  "description": "GitHub Copilot CLI lifecycle hook forwarder for AgentEmployee thread status",
+  "author": "AgentEmployee",
+  "license": "Apache-2.0"
+}

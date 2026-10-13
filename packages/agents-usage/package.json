@@ -1,0 +1,55 @@
+{
+  "name": "@agentemployee/agents-usage",
+  "version": "0.1.0",
+  "description": "Cross-platform usage & quota collection for AI coding agents (GdsAgent, Codex, Copilot, ...). Runtime-agnostic core powering AgentEmployee's in-app usage tracking; a Windows-first alternative to codexbar/openusage.",
+  "keywords": [
+    "ai",
+    "gdsAgent",
+    "codex",
+    "codexbar",
+    "copilot",
+    "openusage",
+    "quota",
+    "rate-limit",
+    "usage"
+  ],
+  "license": "Apache-2.0",
+  "author": "Porabuild",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./antigravity": {
+      "types": "./src/collectors/antigravity.ts",
+      "default": "./src/collectors/antigravity.ts"
+    },
+    "./formatters": {
+      "types": "./src/formatters.ts",
+      "default": "./src/formatters.ts"
+    },
+    "./providers": {
+      "types": "./src/providers.ts",
+      "default": "./src/providers.ts"
+    },
+    "./types": {
+      "types": "./src/types.ts",
+      "default": "./src/types.ts"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
+  "packageManager": "pnpm@12.3.4"
+}

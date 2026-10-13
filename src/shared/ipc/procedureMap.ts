@@ -1,0 +1,287 @@
+import { agentCredentialProcedures } from "./procedures/agentCredentials";
+import { appProcedures } from "./procedures/app";
+import { browserProcedures } from "./procedures/browser";
+import { codeReviewProcedures } from "./procedures/codeReview";
+import { staticAnalysisProcedures } from "./procedures/staticAnalysis";
+import { gdsAgentProcedures } from "./procedures/gdsAgent";
+import { clineProcedures } from "./procedures/cline";
+import { dbProcedures } from "./procedures/db";
+import { documentTemplateProcedures } from "./procedures/documentTemplates";
+import { documentFillProcedures } from "./procedures/documentFill";
+import { experimentProcedures } from "./procedures/experiment";
+import { githubProcedures } from "./procedures/github";
+import { gitProcedures } from "./procedures/git";
+import { lspProcedures } from "./procedures/lsp";
+import { knowledgeProcedures } from "./procedures/knowledge";
+import { liveVoiceProcedures } from "./procedures/liveVoice";
+import { mcpProcedures } from "./procedures/mcp";
+import { pluginProcedures } from "./procedures/plugins";
+import { profileProcedures } from "./procedures/profile";
+import { prWatchProcedures } from "./procedures/prWatches";
+import { taskDraftProcedures } from "./procedures/taskDrafts";
+import { taskProcedures } from "./procedures/tasks";
+import { teamProcedures } from "./procedures/teams";
+import { petProcedures } from "./procedures/pet";
+import { skillProcedures } from "./procedures/skills";
+import { projectTreeProcedures } from "./procedures/projectTree";
+import { settingsProcedures } from "./procedures/settings";
+import { sshProcedures } from "./procedures/ssh";
+import { threadProcedures } from "./procedures/thread";
+import { updatesProcedures } from "./procedures/updates";
+import { usageProcedures } from "./procedures/usage";
+
+export const groupedIpcProcedures = {
+  app: appProcedures,
+  thread: threadProcedures,
+  liveVoice: liveVoiceProcedures,
+  git: gitProcedures,
+  experiment: experimentProcedures,
+  github: githubProcedures,
+  projectTree: projectTreeProcedures,
+  knowledge: knowledgeProcedures,
+  documentTemplates: documentTemplateProcedures,
+  documentFill: documentFillProcedures,
+  settings: settingsProcedures,
+  ssh: sshProcedures,
+  db: dbProcedures,
+  updates: updatesProcedures,
+  lsp: lspProcedures,
+  mcp: mcpProcedures,
+  browser: browserProcedures,
+  usage: usageProcedures,
+  profile: profileProcedures,
+  tasks: taskProcedures,
+  teams: teamProcedures,
+  pet: petProcedures,
+  taskDrafts: taskDraftProcedures,
+  prWatches: prWatchProcedures,
+  skills: skillProcedures,
+  plugins: pluginProcedures,
+  agentCredentials: agentCredentialProcedures,
+  gdsAgent: gdsAgentProcedures,
+  cline: clineProcedures,
+  codeReview: codeReviewProcedures,
+  staticAnalysis: staticAnalysisProcedures,
+} as const;
+
+export const ipcProcedureMap = {
+  ...appProcedures,
+  ...threadProcedures,
+  ...liveVoiceProcedures,
+  ...gitProcedures,
+  ...experimentProcedures,
+  ...githubProcedures,
+  ...projectTreeProcedures,
+  ...knowledgeProcedures,
+  ...documentTemplateProcedures,
+  ...documentFillProcedures,
+  ...settingsProcedures,
+  ...sshProcedures,
+  ...dbProcedures,
+  ...updatesProcedures,
+  ...lspProcedures,
+  ...mcpProcedures,
+  ...browserProcedures,
+  ...usageProcedures,
+  ...profileProcedures,
+  ...taskProcedures,
+  ...teamProcedures,
+  ...petProcedures,
+  ...taskDraftProcedures,
+  ...prWatchProcedures,
+  ...skillProcedures,
+  ...pluginProcedures,
+  ...agentCredentialProcedures,
+  ...gdsAgentProcedures,
+  ...clineProcedures,
+  ...codeReviewProcedures,
+  ...staticAnalysisProcedures,
+} as const;
+
+export type IpcProcedureMap = typeof ipcProcedureMap;
+export type IpcProcedureName = keyof IpcProcedureMap;
+
+type ProcedureArgs<Name extends IpcProcedureName> = IpcProcedureMap[Name]["__types"]["args"];
+
+export type IpcProcedurePayload<Name extends IpcProcedureName> =
+  IpcProcedureMap[Name]["__types"]["payload"];
+
+export type IpcProcedureResult<Name extends IpcProcedureName> =
+  IpcProcedureMap[Name]["__types"]["result"];
+
+export const MAIN_LOCAL_PROCEDURE_NAMES = [
+  "pickFolder",
+  "pickFiles",
+  "detectProjectIcon",
+  "listProjectIconFiles",
+  "saveClipboardImage",
+  "saveHandoffContext",
+  "saveImageFile",
+  "copyImageToClipboard",
+  "readLocalImageFile",
+  "createProjectDirectory",
+  "remoteHttpRequest",
+  "openExternal",
+  "openExternalNative",
+  "openMicrophoneSettings",
+  "focusWindow",
+  "showNotification",
+  "requestLegacyDataMigration",
+  "relaunchApp",
+  "getHomeScopeLocation",
+  "getKeybindings",
+  "setKeybindings",
+  "setGlobalShortcutsSuspended",
+  "getRemoteAccessPairing",
+  "refreshRemoteAccessPairing",
+  "setRemoteAccessEnabled",
+  "revokeRemoteAccessSession",
+  "getRemoteAccessTailscaleStatus",
+  "setRemoteAccessTailscaleHttps",
+  "startTailscale",
+  "setRemoteAccessAdvertisedUrl",
+  "sshDiscoverHosts",
+  "sshConnect",
+  "sshDisconnect",
+  "publishRemoteGitSummaries",
+  "revealProjectEntry",
+  "knowledgeListBases",
+  "knowledgeCreateBase",
+  "knowledgeRenameBase",
+  "knowledgeDeleteBase",
+  "knowledgeRootLocation",
+  "knowledgeListTree",
+  "knowledgeReadFile",
+  "knowledgeWriteFile",
+  "knowledgeImportSources",
+  "knowledgeDeleteEntry",
+  "getSharedSettings",
+  "setSharedSettings",
+  "setAgentSecretSetting",
+  "removeCrossagentRoutingOverride",
+  "removeCrossagentMemoryEntry",
+  "updateCrossagentMemoryEntryTags",
+  "setProfileEnvironment",
+  "createProfile",
+  "setWindowChrome",
+  "dbGetProjects",
+  "dbGetThreads",
+  "dbGetState",
+  "dbSetState",
+  "dbUpsertProject",
+  "dbUpsertThread",
+  "dbDeleteThread",
+  "dbDeleteProject",
+  "dbSyncAll",
+  "dbPersistExperimentState",
+  "dbGetThreadRuntimeItems",
+  "dbGetThreadRuntimeItemsPage",
+  "dbGetLatestThreadGoalItem",
+  "dbTruncateThreadRuntimeAfter",
+  "dbReplaceThreadRuntimeItems",
+  "dbGetThreadCompletedTurns",
+  "dbReplaceThreadCompletedTurns",
+  "dbReplaceThreadRuntimeSnapshot",
+  "dbGetThreadContextUsage",
+  "dbGetProjectNotes",
+  "dbSetProjectNotes",
+  "getUpdateStatus",
+  "checkForUpdate",
+  "startUpdateDownload",
+  "installUpdate",
+  "browserGetState",
+  "browserCreateTab",
+  "browserCloseTab",
+  "browserActivateTab",
+  "browserMoveTab",
+  "browserSetGroupCollapsed",
+  "browserUngroupGroup",
+  "browserCloseGroup",
+  "browserNewTabInGroup",
+  "browserRenameGroup",
+  "browserSetGroupColor",
+  "browserNavigate",
+  "browserBack",
+  "browserForward",
+  "browserReload",
+  "browserHardReload",
+  "browserToggleDevTools",
+  "browserClearHistory",
+  "browserClearCookies",
+  "browserClearCache",
+  "browserCopyScreenshot",
+  "browserCapturePreview",
+  "browserAttachWebContents",
+  "browserStartPicker",
+  "browserCancelPicker",
+  "browserSuggest",
+  "browserAddBookmark",
+  "browserRemoveBookmark",
+  "browserSetBookmarkBarVisible",
+  "browserRecentHistory",
+  "browserExtractToWindow",
+  "browserInjectToMain",
+  "startUsageLogin",
+  "cancelUsageLogin",
+  "clearUsageLogin",
+  "submitUsageApiKey",
+  "resolveUsageLoginConfirmation",
+  "getUsageLoginState",
+  "getProfileCoreStats",
+  "getProfileTokenStats",
+  "getProfileDevices",
+  "getProfileIdentity",
+  "setProfileIdentity",
+  "copyShareImage",
+  "appendUsageEvents",
+  "getTasks",
+  "createTask",
+  "updateTask",
+  "deleteTask",
+  "startTask",
+  "stopTask",
+  "setTaskStatus",
+  "getTaskRuns",
+  "reorderTasks",
+  "assignTeamMember",
+  "recordTeamRun",
+  "updateTeamRunStatus",
+  "petNavigateMain",
+  "petSetCollapsed",
+  "petMoveBall",
+  "petSaveBallPosition",
+  "petHideBall",
+  "petShowBallMenu",
+  "getTaskDrafts",
+  "createTaskDraft",
+  "updateTaskDraft",
+  "deleteTaskDraft",
+  "reorderTaskDrafts",
+  "openPluginsFolder",
+  "getPrWatch",
+  "checkPrWatch",
+  "upsertPrWatch",
+  "deletePrWatch",
+  "syncPrWatchAgent",
+  "installClineOffline",
+  "installGdsAgentOffline",
+  "reviewGetIssueStates",
+  "reviewSetIssueState",
+  "reviewClearIssueStates",
+  "reviewEnsureMcp",
+  "reviewClearProject",
+  "reviewGetProjectData",
+  "reviewCreateTask",
+  "staticAnalysisCreateTask",
+  "staticAnalysisGetProjectData",
+  "staticAnalysisGetRules",
+  "staticAnalysisGetDefaultRules",
+  "staticAnalysisSetDefaultRules",
+  "staticAnalysisSetProblemStatus",
+  "staticAnalysisClearProject",
+] as const satisfies readonly IpcProcedureName[];
+
+export type MainLocalProcedureName = (typeof MAIN_LOCAL_PROCEDURE_NAMES)[number];
+export type SupervisorProcedureName = Exclude<IpcProcedureName, MainLocalProcedureName>;
+
+export type { ProcedureArgs };

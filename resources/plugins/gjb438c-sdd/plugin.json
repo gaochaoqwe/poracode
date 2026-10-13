@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gjb438c-sdd",
+  "version": "1.0.0",
+  "description": "Generate a GJB 438C-2021 [5.11] software design description (.docx) from a fixed Word template using a strict fill engine. Bundles the GJB 438C SDD template and the strict_word_filler Python engine.",
+  "author": {
+    "name": "GJB438C-DocSkill (adapted for AgentEmployee)",
+    "url": "https://gitlink.org.cn/chenpeng0206/GJB_438C"
+  },
+  "homepage": "https://gitlink.org.cn/chenpeng0206/GJB_438C",
+  "repository": "https://gitlink.org.cn/chenpeng0206/GJB_438C",
+  "license": "MulanPSL-2.0",
+  "keywords": ["gjb438c", "sdd", "docx", "design", "military-standard"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "GJB 438C SDD",
+      "category": "productivity",
+      "featured": false,
+      "examplePrompt": "按 GJB 438C-2021 [5.11] 模板生成一份软件设计说明，输出 .docx",
+      "coreSkill": "gjb438c-sdd",
+      "skills": {
+        "gjb438c-sdd": {
+          "name": "GJB 438C SDD",
+          "description": "按 GJB 438C-2021 [5.11] 固定模板生成软件设计说明 .docx（严格模式，只填内容不改结构）。"
+        }
+      }
+    }
+  }
+}

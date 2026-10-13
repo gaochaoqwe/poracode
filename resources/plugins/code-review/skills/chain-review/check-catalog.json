@@ -1,0 +1,62 @@
+{
+  "mode": "chain",
+  "title": "链路审查问题目录",
+  "checks": [
+    {
+      "id": "ch-cycle",
+      "title": "循环依赖或潜在死循环",
+      "when": "调用链存在环（A→B→A），或链内存在缺少终止条件的循环/递归",
+      "severityHint": "high",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-depth",
+      "title": "调用链过深 / 栈风险",
+      "when": "调用深度明显过高（尤其递归或深层嵌套），存在栈溢出或难以维护的风险",
+      "severityHint": "medium",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-data-flow",
+      "title": "数据流断裂或结果未传递",
+      "when": "链上某环的返回值/产出未传递给下游所需方，或关键数据在链路中丢失",
+      "severityHint": "high",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-error-propagation",
+      "title": "错误被吞掉或未沿链传播",
+      "when": "链上某环的失败被忽略、空转或提前返回，导致下游在错误状态上继续执行",
+      "severityHint": "high",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-layer",
+      "title": "跨层 / 依赖方向违规",
+      "when": "底层调用上层、同级环依赖，或依赖方向违背分层架构约定",
+      "severityHint": "medium",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-lifetime",
+      "title": "生命周期 / 悬空引用",
+      "when": "调用方持有的指针/对象在链中被释放或失效后仍被使用",
+      "severityHint": "high",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-condition",
+      "title": "链路条件不一致",
+      "when": "同一条件在链上不同环节判断结果不一致，或前置条件与后置使用冲突",
+      "severityHint": "medium",
+      "scope": "chain"
+    },
+    {
+      "id": "ch-shared-state",
+      "title": "共享状态 / 竞态风险",
+      "when": "链上多环读写同一全局/静态/共享量且无同步，存在竞态或顺序依赖脆弱性",
+      "severityHint": "high",
+      "scope": "chain"
+    }
+  ]
+}

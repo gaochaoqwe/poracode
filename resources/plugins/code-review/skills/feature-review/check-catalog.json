@@ -1,0 +1,69 @@
+{
+  "mode": "feature",
+  "title": "功能审查问题目录",
+  "checks": [
+    {
+      "id": "fe-incomplete",
+      "title": "功能不完整 / 与需求有缺口",
+      "when": "某一功能相对于需求描述缺少必要处理分支、入口或场景",
+      "severityHint": "high",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-boundary",
+      "title": "边界条件缺失",
+      "when": "功能对输入的上限/下限/临界值、空集、极值场景缺少明确处理",
+      "severityHint": "high",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-input-validation",
+      "title": "输入校验缺失",
+      "when": "功能未对用户/外部输入做合法性校验，非法输入直接进入处理",
+      "severityHint": "high",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-requirement-mismatch",
+      "title": "行为与需求不符",
+      "when": "实现行为、参数口径、单位或结果与需求文档不一致",
+      "severityHint": "high",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-default",
+      "title": "缺省值 / 默认行为未定义",
+      "when": "功能在未配置、未初始化或缺省情况下行为未定义或采用危险默认",
+      "severityHint": "medium",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-concurrency",
+      "title": "并发 / 时序问题",
+      "when": "功能在并发调用、多线程、多实例或时序依赖下结果不稳定",
+      "severityHint": "high",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-testability",
+      "title": "可测试性差",
+      "when": "功能缺少可观察的输出、依赖点或测试钩子，难以建立可重复验证的用例",
+      "severityHint": "low",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-consistency",
+      "title": "跨模式 / 跨配置行为不一致",
+      "when": "同一功能在不同配置、参数组合或路径下行为不一致且无说明",
+      "severityHint": "medium",
+      "scope": "feature"
+    },
+    {
+      "id": "fe-documentation",
+      "title": "功能说明 / 注释缺失",
+      "when": "功能的触发条件、前提、输出约定、状态机缺少必要说明，影响理解与维护",
+      "severityHint": "low",
+      "scope": "feature"
+    }
+  ]
+}

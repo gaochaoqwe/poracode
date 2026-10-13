@@ -1,0 +1,420 @@
+{
+  "identityLineAnchors": {
+    "document_id": "文档标识号：TN/x-DO-DS-V{N.xx}；",
+    "title": "标题：",
+    "project_name": "软件名称：",
+    "short_name": "软件缩写：",
+    "version": "软件版本号。"
+  },
+  "identityRules": [
+    {
+      "key": "identity.document_id",
+      "anchor": "文档标识号：TN/x-DO-DS-V{N.xx}；",
+      "field": "document.id.content",
+      "prefix": "文档标识号：",
+      "suffix": "；",
+      "expected": 1
+    },
+    {
+      "key": "identity.title",
+      "anchor": "标题：",
+      "field": "document.title.content",
+      "prefix": "标题：",
+      "suffix": "",
+      "expected": 1
+    },
+    {
+      "key": "identity.project_name",
+      "anchor": "软件名称：",
+      "field": "project.name.content",
+      "prefix": "软件名称：",
+      "suffix": "",
+      "expected": 1
+    },
+    {
+      "key": "identity.short_name",
+      "anchor": "软件缩写：",
+      "field": "project.short_name.content",
+      "prefix": "软件缩写：",
+      "suffix": "",
+      "expected": 1
+    },
+    {
+      "key": "identity.version",
+      "anchor": "软件版本号。",
+      "field": "project.version.content",
+      "prefix": "软件版本号：",
+      "suffix": "。",
+      "expected": 1
+    }
+  ],
+  "patternOverrides": {
+    "1.1": "本条应描述本文档所适用软件的完整标识",
+    "1.2": "本条应概述本文档所适用软件的用途",
+    "1.3": "本条应概述本文档的用途和内容",
+    "2": "本章应列出引用文档的编号、标题、编写单位、修订版及日期",
+    "3": "本章应根据需要分条给出CSCI级设计决策",
+    "6": "本章应包含:",
+    "7": "本章应包括有助于了解文档的所有信息"
+  },
+  "coverRules": [
+    {
+      "key": "cover.project_name",
+      "anchor": "外部型号+产品名称",
+      "field": "project.name.content",
+      "prefix": "",
+      "suffix": "",
+      "expected": 1
+    },
+    {
+      "key": "cover.document_title",
+      "anchor": "文档标题",
+      "field": "document.title.content",
+      "prefix": "",
+      "suffix": "",
+      "expected": 1
+    },
+    {
+      "key": "cover.short_name",
+      "anchor": "产品型号-XXXX",
+      "field": "project.short_name.content",
+      "prefix": "产品型号-",
+      "suffix": "",
+      "expected": 1
+    }
+  ],
+  "insertionParentScope": "top",
+  "insertionParentRules": {
+    "4.1": {
+      "parent_title": "CSCI部件",
+      "summary_anchor": "本条应描述：",
+      "end_before_title": "执行方案",
+      "prototype_title_anchor": "4.1.X <软件单元>",
+      "prototype_body_anchor": "本条描述该软件单元的静态关系、用途、开发状态、资源占用以及分配给它的需求。",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_titles": {
+        "0": "4.1.X <软件单元>",
+        "1": "4.1.X.X <子软件单元>"
+      },
+      "prototype_tables": {
+        "unit_alloc": {
+          "locator_rows": [
+            [
+              "分配给该软件单元的需求和CSCI级设计决策",
+              "分配给该软件单元的需求和CSCI级设计决策",
+              "分配给该软件单元的需求和CSCI级设计决策"
+            ],
+            [
+              "标识",
+              "分配类型",
+              "软件单元的需求"
+            ]
+          ],
+          "columns": [
+            "id",
+            "alloc_type",
+            "requirement"
+          ]
+        }
+      },
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性"
+    },
+    "4.2": {
+      "parent_title": "执行方案",
+      "summary_anchor": "本条应说明软件单元间的执行方案",
+      "end_before_title": "接口设计",
+      "prototype_title_anchor": "4.2.X <子节>",
+      "prototype_body_anchor": "本条描述执行方案的细节，包括任务/中断划分、任务模型、时序与调用关系。",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_titles": {
+        "0": "4.2.X <子节>",
+        "1": "4.2.X.X <子节>"
+      },
+      "prototype_tables": {
+        "exec_rule": {
+          "locator_rows": [
+            [
+              "规则名称",
+              "规则内容"
+            ]
+          ],
+          "columns": [
+            "name",
+            "content"
+          ]
+        }
+      },
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性"
+    },
+    "4.3": {
+      "parent_title": "接口设计",
+      "summary_anchor": "本条说明编译器CSCI的对外接口与内部接口。",
+      "end_before_title": "CSCI详细设计",
+      "prototype_title_anchor": "4.3.X （接口的唯一标识符）",
+      "prototype_body_anchor": "本条(从4.3.2开始)应通过唯一标识符来标识接口",
+      "cleanup_anchors": [
+        "4.3.X （接口的唯一标识符）"
+      ],
+      "cleanup_to_end": true,
+      "prototype_tables": {
+        "data_elem": {
+          "locator_rows": [
+            [
+              "序号",
+              "接口项目标识符",
+              "数据名称",
+              "量纲",
+              "值域",
+              "精度",
+              "变量名标识",
+              "数据类型"
+            ]
+          ],
+          "columns": [
+            "number",
+            "if_id",
+            "name",
+            "dimension",
+            "range",
+            "precision",
+            "var_id",
+            "data_type"
+          ]
+        },
+        "data_group": {
+          "locator_rows": [
+            [
+              "序号",
+              "接口项目标识符",
+              "组合体名称",
+              "包含元素变量标识及其结构",
+              "组合体定义"
+            ]
+          ],
+          "columns": [
+            "number",
+            "if_id",
+            "name",
+            "elements",
+            "definition"
+          ]
+        },
+        "comm": {
+          "locator_rows": [
+            [
+              "序号",
+              "接口项目标识符",
+              "接口对象",
+              "通讯链接",
+              "消息格式",
+              "更新周期",
+              "优先级（若适用）"
+            ]
+          ],
+          "columns": [
+            "number",
+            "if_id",
+            "object",
+            "link",
+            "message",
+            "period",
+            "priority"
+          ]
+        },
+        "protocol": {
+          "locator_rows": [
+            [
+              "序号",
+              "接口项目标识符",
+              "数据合法性检查的协议",
+              "数据打包协议",
+              "同步协议"
+            ]
+          ],
+          "columns": [
+            "number",
+            "if_id",
+            "validity",
+            "packing",
+            "sync"
+          ]
+        }
+      },
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性"
+    },
+    "4.3.1.2": {
+      "parent_title": "CSCI内部单元接口组成",
+      "summary_anchor": "内部单元接口见图。",
+      "end_before_title": "任务接口组成",
+      "prototype_title_anchor": "4.3.1.2.X <单元内部接口组成>",
+      "prototype_body_anchor": "该软件单元的内部接口见图。",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_tables": {
+        "unit_if": {
+          "locator_rows": [
+            [
+              "序号",
+              "名称",
+              "标识符",
+              "所属对象",
+              "接口描述"
+            ]
+          ],
+          "columns": [
+            "number",
+            "name",
+            "identifier",
+            "owner",
+            "description"
+          ]
+        }
+      },
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性"
+    },
+    "5.1": {
+      "parent_title": "任务",
+      "summary_anchor": "本条描述各任务的设计，单任务时可删除本条。",
+      "end_before_title": "中断",
+      "prototype_title_anchor": "5.1.X <任务>",
+      "prototype_body_anchor": "任务名称：XXX任务",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性"
+    },
+    "5.2": {
+      "parent_title": "中断",
+      "summary_anchor": "本条描述各中断的设计，无中断时可删除本条。",
+      "end_before_title": "单元",
+      "prototype_title_anchor": "5.2.X <中断>",
+      "prototype_body_anchor": "中断名称：XXX中断",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性"
+    },
+    "5.3": {
+      "parent_title": "单元",
+      "summary_anchor": "按照5.3.1的方式描述所有软件单元的设计。",
+      "end_before_title": "需求可追踪性",
+      "prototype_title_anchor": "5.3.X <软件单元>",
+      "prototype_body_anchor": "该软件单元完成XXX功能。",
+      "cleanup_anchors": [],
+      "cleanup_to_end": true,
+      "prototype_caption_anchor": "表X-X 需求的正向追踪性",
+      "prototype_titles": {
+        "0": "5.3.X <软件单元>",
+        "1": "5.3.X.Y <子节>"
+      },
+      "prototype_tables": {
+        "entry_func": {
+          "locator_rows": [
+            [
+              "项目",
+              "内容"
+            ]
+          ],
+          "columns": [
+            "item",
+            "content"
+          ]
+        },
+        "io_data": {
+          "locator_rows": [
+            [
+              "序号",
+              "名称",
+              "标识符",
+              "类型",
+              "长度",
+              "输入输出",
+              "描述"
+            ]
+          ],
+          "columns": [
+            "number",
+            "name",
+            "identifier",
+            "type",
+            "length",
+            "direction",
+            "description"
+          ]
+        },
+        "local_var": {
+          "locator_rows": [
+            [
+              "序号",
+              "名称",
+              "标识符",
+              "类型",
+              "长度",
+              "量纲",
+              "描述"
+            ]
+          ],
+          "columns": [
+            "number",
+            "name",
+            "identifier",
+            "type",
+            "length",
+            "dimension",
+            "description"
+          ]
+        },
+        "struct_def": {
+          "locator_rows": [
+            [
+              "结构标识",
+              "元素名称",
+              "标识符",
+              "类型",
+              "量纲",
+              "值域"
+            ]
+          ],
+          "columns": [
+            "struct_id",
+            "element",
+            "identifier",
+            "type",
+            "dimension",
+            "range"
+          ]
+        },
+        "rule_algo": {
+          "locator_rows": [
+            [
+              "名称",
+              "规则与算法"
+            ]
+          ],
+          "columns": [
+            "name",
+            "content"
+          ]
+        },
+        "error_handle": {
+          "locator_rows": [
+            [
+              "序号",
+              "错误或异常",
+              "监测手段",
+              "处理规则"
+            ]
+          ],
+          "columns": [
+            "number",
+            "error",
+            "detection",
+            "handling"
+          ]
+        }
+      }
+    }
+  },
+  "headingSeparator": "always",
+  "captionMode": "fallback"
+}

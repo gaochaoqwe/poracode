@@ -1,0 +1,22 @@
+import { useLingui } from "@lingui/react/macro";
+import { isHomeProject } from "@/shared/homeScope";
+import { SkillsManager } from "@/renderer/components/skills/SkillsManager";
+import { useAppStore } from "@/renderer/state/appStore";
+import { SettingsPage } from "@/renderer/views/SettingsOverlay/parts/SettingsForm";
+
+export function SkillsPanel() {
+  const { t } = useLingui();
+  const projects = useAppStore((state) => state.projects)
+    .filter((project) => !isHomeProject(project))
+    .map(({ id, name, location, icon }) => ({ id, name, location, ...(icon ? { icon } : {}) }));
+
+  return (
+    <SettingsPage
+      title={t`Skills`}
+      description={t`Manage shared skills across global and project scopes.`}
+      bodyClassName="space-y-5"
+    >
+      <SkillsManager projects={projects} />
+    </SettingsPage>
+  );
+}

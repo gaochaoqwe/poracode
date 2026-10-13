@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "scopes": ["item", "cross"],
+  "severities": ["high", "medium", "low"],
+  "issueTypes": [
+    { "id": "ambiguity", "scope": "item", "label": "Ambiguous wording" },
+    { "id": "incompleteness", "scope": "item", "label": "Incomplete expression" },
+    { "id": "unverifiable", "scope": "item", "label": "Not objectively verifiable" },
+    { "id": "missing-metric", "scope": "item", "label": "Missing quantified metric" },
+    { "id": "missing-source", "scope": "item", "label": "Missing source reference" },
+    { "id": "duplication", "scope": "cross", "label": "Duplicate requirement" },
+    { "id": "conflict", "scope": "cross", "label": "Conflicting requirements" },
+    { "id": "metric-value-conflict", "scope": "cross", "label": "Inconsistent metric value" },
+    { "id": "term-inconsistency", "scope": "cross", "label": "Inconsistent terminology" },
+    {
+      "id": "interface-field-inconsistency",
+      "scope": "cross",
+      "label": "Inconsistent interface field definition"
+    }
+  ]
+}

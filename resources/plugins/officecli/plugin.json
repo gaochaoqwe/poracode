@@ -1,0 +1,32 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "officecli",
+  "version": "1.0.0",
+  "description": "Create, inspect, and modify Office documents (.docx, .xlsx, .pptx) with the bundled officecli binary — no Office install required.",
+  "author": {
+    "name": "AgentEmployee",
+    "url": "https://agentemployee.com"
+  },
+  "homepage": "https://officecli.ai",
+  "license": "Apache-2.0",
+  "keywords": ["office", "docx", "xlsx", "pptx", "word", "excel", "powerpoint", "document"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "Office Documents",
+      "category": "productivity",
+      "featured": true,
+      "examplePrompt": "Create a Word report from these notes, then a summary spreadsheet with a chart",
+      "communityMaintained": true,
+      "defaultEnabled": false,
+      "platforms": ["win32"],
+      "projectKinds": ["windows"],
+      "coreSkill": "officecli",
+      "skills": {
+        "officecli": {
+          "name": "Office Documents",
+          "description": "Create and edit .docx, .xlsx, and .pptx with the bundled officecli binary."
+        }
+      }
+    }
+  }
+}

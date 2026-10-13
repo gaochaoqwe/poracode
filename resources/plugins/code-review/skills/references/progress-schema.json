@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodeReviewProgress",
+  "type": "object",
+  "required": ["kind", "version", "taskId", "mode", "status", "total", "done", "updatedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "code-review-progress" },
+    "version": { "const": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["function", "chain", "feature"] },
+    "status": { "enum": ["running", "done", "paused"] },
+    "total": { "type": "integer", "minimum": 0 },
+    "done": { "type": "integer", "minimum": 0 },
+    "batchSize": { "type": "integer", "minimum": 1 },
+    "currentFile": { "type": "string", "minLength": 1 },
+    "currentFunction": { "type": "string", "minLength": 1 },
+    "issuesInBatch": { "type": "integer", "minimum": 0 },
+    "accumulatedIssues": { "type": "integer", "minimum": 0 },
+    "overBudget": { "type": "boolean" },
+    "startedAt": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "minLength": 1 }
+  }
+}

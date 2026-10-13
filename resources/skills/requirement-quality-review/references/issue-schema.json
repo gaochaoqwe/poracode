@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RequirementQualityReport",
+  "type": "object",
+  "required": ["kind", "version", "issues"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "requirement-quality-report" },
+    "version": { "const": 1 },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project": { "type": "string" },
+        "documents": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "type", "scope", "severity", "summary", "suggestion"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "source": {
+            "type": "object",
+            "required": ["file"],
+            "additionalProperties": false,
+            "properties": {
+              "file": { "type": "string", "minLength": 1 },
+              "section": { "type": "string", "minLength": 1 },
+              "anchor": { "type": "string", "minLength": 1 },
+              "itemId": { "type": "string", "minLength": 1 }
+            }
+          },
+          "type": {
+            "enum": [
+              "ambiguity",
+              "incompleteness",
+              "unverifiable",
+              "missing-metric",
+              "missing-source",
+              "duplication",
+              "conflict",
+              "metric-value-conflict",
+              "term-inconsistency",
+              "interface-field-inconsistency"
+            ]
+          },
+          "scope": { "enum": ["item", "cross"] },
+          "severity": { "enum": ["high", "medium", "low"] },
+          "relatedItemIds": { "type": "array", "items": { "type": "string" } },
+          "summary": { "type": "string", "minLength": 1 },
+          "suggestion": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

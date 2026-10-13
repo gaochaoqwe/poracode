@@ -1,0 +1,23 @@
+{
+  "name": "@agentemployee/codex-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Install-time-generated TypeScript definitions for the Codex app-server protocol.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "scripts": {
+    "generate": "node ./scripts/generate.mjs"
+  },
+  "devDependencies": {
+    "@openai/codex": "0.153.4"
+  },
+  "packageManager": "pnpm@12.3.4"
+}

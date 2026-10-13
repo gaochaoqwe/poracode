@@ -1,0 +1,7 @@
+{
+  "name": "agentemployee-status",
+  "version": "1.0.1",
+  "description": "Forward Command Code lifecycle events (PreToolUse/PostToolUse/Stop) to AgentEmployee for sidebar status detection.",
+  "author": "AgentEmployee",
+  "license": "Apache-2.0"
+}

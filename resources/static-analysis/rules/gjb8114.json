@@ -1,0 +1,1932 @@
+[
+ {
+  "rule_code": "R-1-1-1",
+  "rule_name": "禁止通过宏定义改变关键字和基本类型含义",
+  "rule_description": "宏定义不能改变关键字和基本类型的含义",
+  "category": "宏定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "AST分析",
+  "keywords": [
+   {
+    "keyword": "宏定义",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "关键字",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-2",
+  "rule_name": "禁止将其他标识宏定义为关键字和基本类型",
+  "rule_description": "标识符不能定义为关键字和基本类型",
+  "category": "宏定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": [
+   {
+    "keyword": "标识",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "关键字",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-3",
+  "rule_name": "禁止用typedef自定义的类型被重新定义",
+  "rule_description": "typedef定义的类型不能重复定义",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": [
+   {
+    "keyword": "typedef",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "重定义",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-4",
+  "rule_name": "禁止重新定义C或C++的关键字",
+  "rule_description": "不能重新定义语言关键字",
+  "category": "宏定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "关键字检查",
+  "keywords": [
+   {
+    "keyword": "关键字",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "重定义",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-5",
+  "rule_name": "禁止#define被重复定义",
+  "rule_description": "宏定义不能重复",
+  "category": "宏定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": [
+   {
+    "keyword": "#define",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "重复定义",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-6",
+  "rule_name": "函数中#define和#undef必须配对使用",
+  "rule_description": "函数内宏定义和取消定义必须配对",
+  "category": "宏定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "配对检查",
+  "keywords": [
+   {
+    "keyword": "#define",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "#undef",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "配对",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-7",
+  "rule_name": "以函数形式定义的宏，参数和结果必须使用括号括起来",
+  "rule_description": "函数式宏的参数和结果需要括号",
+  "category": "宏定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "宏展开检查",
+  "keywords": [
+   {
+    "keyword": "宏",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "括号",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-8",
+  "rule_name": "结构、联合、枚举的定义中必须定义标识名",
+  "rule_description": "结构体等必须有标识名",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "AST分析",
+  "keywords": [
+   {
+    "keyword": "结构",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "联合",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "枚举",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "标识名",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-9",
+  "rule_name": "结构体定义中禁止含有无名结构体",
+  "rule_description": "结构体不能包含匿名结构体",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "结构体分析",
+  "keywords": [
+   {
+    "keyword": "结构体",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "无名",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-10",
+  "rule_name": "位定义的有符号整型变量位长必须大于1",
+  "rule_description": "有符号位域长度必须大于1",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "位域检查",
+  "keywords": [
+   {
+    "keyword": "位定义",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "位长",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-11",
+  "rule_name": "位定义的整数型变量必须明确定义是有符号还是无符号的",
+  "rule_description": "位域必须明确符号性",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": [
+   {
+    "keyword": "位定义",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "有符号",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "无符号",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-12",
+  "rule_name": "位定义的变量必须是同长度的类型且定义位禁止跨越类型的长度",
+  "rule_description": "位域不能跨越类型边界",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "位域分析",
+  "keywords": [
+   {
+    "keyword": "位定义",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "跨越",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-13",
+  "rule_name": "函数声明中必须对参数类型进行声明，并带有变量名",
+  "rule_description": "函数声明需要参数类型和名称",
+  "category": "函数声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "函数签名检查",
+  "keywords": [
+   {
+    "keyword": "函数声明",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "参数",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-14",
+  "rule_name": "函数声明必须与函数原型一致",
+  "rule_description": "函数声明和定义必须一致",
+  "category": "函数声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "签名比较",
+  "keywords": [
+   {
+    "keyword": "函数声明",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "原型",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-15",
+  "rule_name": "函数中的参数必须使用类型声明",
+  "rule_description": "函数参数必须有类型声明",
+  "category": "函数声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "参数检查",
+  "keywords": [
+   {
+    "keyword": "函数",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "参数",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "类型声明",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-16",
+  "rule_name": "外部声明的变量，类型必须与定义一致",
+  "rule_description": "extern声明类型必须一致",
+  "category": "变量声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型一致性检查",
+  "keywords": [
+   {
+    "keyword": "外部声明",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "变量",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-17",
+  "rule_name": "禁止在函数体内使用外部声明",
+  "rule_description": "函数内不能使用extern声明",
+  "category": "变量声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "作用域检查",
+  "keywords": [
+   {
+    "keyword": "函数体",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "外部声明",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-18",
+  "rule_name": "数组定义禁止没有显式的边界限定",
+  "rule_description": "数组必须有明确的大小",
+  "category": "数组定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "数组声明检查",
+  "keywords": [
+   {
+    "keyword": "数组",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "边界",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-19",
+  "rule_name": "禁止使用extern声明对变量初始化",
+  "rule_description": "extern变量不能初始化",
+  "category": "变量声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "初始化检查",
+  "keywords": [
+   {
+    "keyword": "extern",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "初始化",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-20",
+  "rule_name": "用于数值计算的字符型变量必须明确定义是有符号还是无符号",
+  "rule_description": "字符型变量必须明确符号性",
+  "category": "类型定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": [
+   {
+    "keyword": "字符型",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "有符号",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "无符号",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-21",
+  "rule_name": "禁止在#include语句中使用绝对路径",
+  "rule_description": "include不能使用绝对路径",
+  "category": "头文件",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "路径检查",
+  "keywords": [
+   {
+    "keyword": "#include",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "绝对路径",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-22",
+  "rule_name": "禁止头文件重复包含",
+  "rule_description": "头文件不能重复包含",
+  "category": "头文件",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "包含检查",
+  "keywords": [
+   {
+    "keyword": "头文件",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "重复包含",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-1-23",
+  "rule_name": "函数参数表为空时，必须使用void明确说明",
+  "rule_description": "空参数列表必须用void",
+  "category": "函数声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "参数列表检查",
+  "keywords": [
+   {
+    "keyword": "函数参数",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "void",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-2-1",
+  "rule_name": "循环体必须用大括号括起来",
+  "rule_description": "循环体需要大括号",
+  "category": "代码格式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "AST结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-2-2",
+  "rule_name": "if、else if、else必须用大括号括起来",
+  "rule_description": "条件语句需要大括号",
+  "category": "代码格式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "AST结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-2-3",
+  "rule_name": "禁止在头文件前有可执行代码",
+  "rule_description": "头文件前不能有可执行代码",
+  "category": "代码格式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "预处理检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-2-4",
+  "rule_name": "引起二义性理解的逻辑表达式，必须使用括号显示说明优先级顺序",
+  "rule_description": "复杂表达式需要括号",
+  "category": "代码格式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "表达式分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-2-5",
+  "rule_name": "逻辑判别表达式中的运算项必须使用括号",
+  "rule_description": "逻辑表达式需要括号",
+  "category": "代码格式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "表达式分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-2-6",
+  "rule_name": "禁止嵌套注释",
+  "rule_description": "不能嵌套注释",
+  "category": "代码格式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "注释检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-3-1",
+  "rule_name": "禁止指针的指针超过两级",
+  "rule_description": "指针层级不能超过两级",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-3-2",
+  "rule_name": "C函数指针的使用必须加以&明确说明",
+  "rule_description": "函数指针需要&操作符",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "表达式检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-3-7",
+  "rule_name": "动态分配的指针变量定义时如未被分配空间，必须初始化为NULL",
+  "rule_description": "未分配的指针必须初始化为NULL",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "初始化检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-3-9",
+  "rule_name": "空指针必须使用NULL避免使用整型数0",
+  "rule_description": "空指针必须用NULL",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "常量检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-1",
+  "rule_name": "在if-else if语句中必须使用else分支",
+  "rule_description": "if-else if必须有else",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "分支结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-3",
+  "rule_name": "禁止使用空switch语句",
+  "rule_description": "switch语句不能为空",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "AST结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-4",
+  "rule_name": "禁止对bool量使用switch语句",
+  "rule_description": "bool类型不能用switch",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-5",
+  "rule_name": "禁止switch语句中只包含default语句",
+  "rule_description": "switch不能只有default",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "AST结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-6",
+  "rule_name": "除枚举类型列举完全外，switch必须要有default",
+  "rule_description": "switch必须有default",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "分支检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-7",
+  "rule_name": "switch中的case和default必须以break或return终止，共用case必须加以明确注释",
+  "rule_description": "switch分支必须终止或有注释",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "控制流终止检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-4-8",
+  "rule_name": "switch语句的所有分支必须具有相同的层次范围",
+  "rule_description": "switch分支层次必须一致",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "作用域检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-5-1",
+  "rule_name": "禁止从复合语句外goto到复合语句内，或由下向上goto",
+  "rule_description": "goto不能跨复合语句或向上跳转",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "goto目标和结构分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-5-2",
+  "rule_name": "禁止使用setjmp/longjmp",
+  "rule_description": "不能使用setjmp/longjmp",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "函数调用检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-1",
+  "rule_name": "禁止将浮点常数赋给整型变量",
+  "rule_description": "浮点数不能直接赋给整型",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-3",
+  "rule_name": "禁止在逻辑表达式中使用赋值语句",
+  "rule_description": "逻辑表达式中不能赋值",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "表达式分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-4",
+  "rule_name": "禁止对逻辑表达式进行位运算",
+  "rule_description": "逻辑表达式不能位运算",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "操作符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-5",
+  "rule_name": "禁止在运算表达式中或函数调用参数中使用++或--操作符",
+  "rule_description": "表达式中不能用++/--",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "操作符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-6",
+  "rule_name": "对变量进行移位运算禁止超出变量长度",
+  "rule_description": "移位不能超出变量长度",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "移位检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-7",
+  "rule_name": "禁止移位操作中的移位数为负数",
+  "rule_description": "移位数不能为负",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "常量检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-9",
+  "rule_name": "数组下标必须是大于等于零的整型数",
+  "rule_description": "数组下标必须非负整数",
+  "category": "数组访问",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-18",
+  "rule_name": "禁止使用gets函数，应使用fgets函数替代",
+  "rule_description": "不能使用gets函数",
+  "category": "函数使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "函数调用检查",
+  "keywords": [
+   {
+    "keyword": "gets",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "fgets",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-10",
+  "rule_name": "禁止对常数值做逻辑非的运算",
+  "rule_description": "常数不能逻辑非运算",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "常量检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-11",
+  "rule_name": "禁止非枚举类型变量使用枚举类型的值",
+  "rule_description": "非枚举变量不能用枚举值",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-13",
+  "rule_name": "禁止在sizeof中使用赋值",
+  "rule_description": "sizeof中不能赋值",
+  "category": "表达式",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "表达式分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-1",
+  "rule_name": "禁止覆盖标准函数库的函数",
+  "rule_description": "不能重定义标准库函数",
+  "category": "函数定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-2",
+  "rule_name": "禁止函数的实参和形参类型不一致",
+  "rule_description": "实参形参类型必须一致",
+  "category": "函数调用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-3",
+  "rule_name": "禁止实参与形参的个数不一致",
+  "rule_description": "实参形参个数必须一致",
+  "category": "函数调用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "参数个数检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-4",
+  "rule_name": "禁止使用旧形式的函数参数表定义形式",
+  "rule_description": "不能用旧式函数定义",
+  "category": "函数定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "语法检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-5",
+  "rule_name": "函数声明和函数定义中的参数类型必须一致",
+  "rule_description": "声明定义参数类型必须一致",
+  "category": "函数定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "签名比较",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-6",
+  "rule_name": "函数声明和函数定义中的返回类型必须一致",
+  "rule_description": "声明定义返回类型必须一致",
+  "category": "函数定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-8",
+  "rule_name": "禁止无返回值函数的返回语句带有返回值",
+  "rule_description": "void函数不能返回值",
+  "category": "函数返回",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "返回语句检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-9",
+  "rule_name": "有返回值函数的返回语句必须带有返回值",
+  "rule_description": "非void函数必须返回值",
+  "category": "函数返回",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "返回语句检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-10",
+  "rule_name": "函数返回值的类型必须与定义一致",
+  "rule_description": "返回值类型必须一致",
+  "category": "函数返回",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-11",
+  "rule_name": "具有返回值的函数，其返回值如果不被使用，调用时应有(void)说明",
+  "rule_description": "未使用返回值需要(void)说明",
+  "category": "函数调用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "返回值检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-12",
+  "rule_name": "无返回值的函数，调用时禁止再用(void)重复说明",
+  "rule_description": "void函数不需要(void)说明",
+  "category": "函数调用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "调用检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-15",
+  "rule_name": "禁止在函数参数表中使用省略号",
+  "rule_description": "函数参数不能用省略号",
+  "category": "函数定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "参数检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-7-16",
+  "rule_name": "禁止使用直接或间接自调用函数",
+  "rule_description": "不能递归调用",
+  "category": "函数调用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "调用图递归检测",
+  "keywords": [
+   {
+    "keyword": "递归",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "自调用",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-8-3",
+  "rule_name": "禁止使用无效语句",
+  "rule_description": "不能有无效语句",
+  "category": "语句使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "语句检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-8-4",
+  "rule_name": "使用八进制数必须明确注释",
+  "rule_description": "八进制数需要注释",
+  "category": "语句使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "常量检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-8-5",
+  "rule_name": "数字类型后缀必须使用大写字母",
+  "rule_description": "数字后缀必须大写",
+  "category": "语句使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "字面量检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-9-1",
+  "rule_name": "for循环控制变量必须使用局部变量",
+  "rule_description": "for循环变量必须局部",
+  "category": "循环控制",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "变量作用域检查",
+  "keywords": [
+   {
+    "keyword": "for循环",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "控制变量",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "局部变量",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-9-2",
+  "rule_name": "for循环控制变量必须使用整数型变量",
+  "rule_description": "for循环变量必须整型",
+  "category": "循环控制",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-9-4",
+  "rule_name": "无限循环必须使用while(1)语句，禁止使用for(;;)等其它形式的语句",
+  "rule_description": "无限循环必须用while(1)",
+  "category": "循环控制",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "循环结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-10-1",
+  "rule_name": "浮点型变量赋给整型变量必须使用强制转换",
+  "rule_description": "浮点转整型需要强制转换",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型转换检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-10-2",
+  "rule_name": "长整数变量赋给短整数变量必须使用强制转换",
+  "rule_description": "长整型转短整型需要强制转换",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型转换检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-10-3",
+  "rule_name": "double型变量赋给float型变量必须强制转换",
+  "rule_description": "double转float需要强制转换",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型转换检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-10-4",
+  "rule_name": "指针变量的赋值类型必须与指针变量类型一致",
+  "rule_description": "指针赋值类型必须一致",
+  "category": "类型转换",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "语法分析",
+  "detection_method": "指针类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-10-5",
+  "rule_name": "将指针量赋予非指针变量或非指针量赋予指针变量，必须使用强制转换",
+  "rule_description": "指针非指针转换需要强制转换",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型转换检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-10-6",
+  "rule_name": "禁止使用无实质作用的类型转换",
+  "rule_description": "不能无意义类型转换",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "转换分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-11-2",
+  "rule_name": "变量初始化禁止隐含依赖于系统的缺省",
+  "rule_description": "初始化不能依赖系统默认值",
+  "category": "初始化",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "初始化检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-11-3",
+  "rule_name": "结构体初始化的嵌套结构必须与定义一致",
+  "rule_description": "结构体初始化必须与定义一致",
+  "category": "初始化",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "结构体检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-11-4",
+  "rule_name": "枚举元素定义中的初始化必须完整",
+  "rule_description": "枚举初始化必须完整",
+  "category": "初始化",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "枚举检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-12-1",
+  "rule_name": "禁止对逻辑量进行大于或小于的逻辑比较",
+  "rule_description": "逻辑量不能大小比较",
+  "category": "比较判断",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "操作符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-12-2",
+  "rule_name": "禁止对指针进行大于或小于的逻辑比较",
+  "rule_description": "指针不能大小比较",
+  "category": "比较判断",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "指针比较检查",
+  "keywords": [
+   {
+    "keyword": "指针",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "比较",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-12-3",
+  "rule_name": "禁止对浮点数进行是否相等的比较",
+  "rule_description": "浮点数不能相等比较",
+  "category": "比较判断",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "浮点数比较检查",
+  "keywords": [
+   {
+    "keyword": "浮点数",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "相等",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "比较",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-12-4",
+  "rule_name": "禁止对无符号数进行大于等于零或小于零的比较",
+  "rule_description": "无符号数不能与零比较大小",
+  "category": "比较判断",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-12-5",
+  "rule_name": "禁止无符号数与有符号数之间直接比较",
+  "rule_description": "有符号无符号不能直接比较",
+  "category": "比较判断",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-1",
+  "rule_name": "禁止局部变量与全局变量同名",
+  "rule_description": "局部全局变量不能同名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-2",
+  "rule_name": "禁止函数形参与全局变量同名",
+  "rule_description": "形参全局变量不能同名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-3",
+  "rule_name": "禁止变量名与函数名同名",
+  "rule_description": "变量函数不能同名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-4",
+  "rule_name": "禁止变量名与标识名同名",
+  "rule_description": "变量标识符不能同名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-5",
+  "rule_name": "禁止变量名与枚举元素同名",
+  "rule_description": "变量枚举元素不能同名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-6",
+  "rule_name": "禁止变量名与typedef自定义的类型名同名",
+  "rule_description": "变量typedef类型不能同名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "符号表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-7",
+  "rule_name": "禁止在内部块中重定义已有的变量名",
+  "rule_description": "内部块不能重定义变量",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "作用域检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-8",
+  "rule_name": "禁止仅依赖大小写区分的变量",
+  "rule_description": "变量不能仅大小写区分",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "命名检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-9",
+  "rule_name": "禁止仅依赖小写字母'l'与数字'1'区分的变量",
+  "rule_description": "变量不能用l和1区分",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "命名检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-10",
+  "rule_name": "禁止仅依赖大写字母'O'与数字'0'区分的变量",
+  "rule_description": "变量不能用O和0区分",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "命名检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-11",
+  "rule_name": "禁止单独使用小写字母'l'或大写字母'O'作为变量",
+  "rule_description": "不能单独用l或O作变量名",
+  "category": "变量命名",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "命名检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-12",
+  "rule_name": "程序外部可改写的变量，必须使用volatile类型说明",
+  "rule_description": "外部可改写变量必须volatile",
+  "category": "变量声明",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型修饰符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-13",
+  "rule_name": "禁止在表达式中出现多个同一volatile类型变量的运算",
+  "rule_description": "表达式中不能多个volatile变量",
+  "category": "变量使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "表达式分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-14",
+  "rule_name": "禁止将NULL做为整型数0使用",
+  "rule_description": "NULL不能当整数0用",
+  "category": "变量使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "常量检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-15",
+  "rule_name": "禁止给无符号类型变量赋负值",
+  "rule_description": "无符号变量不能赋负值",
+  "category": "变量使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-13-16",
+  "rule_name": "用于表示字符串的数组必须以\\0结束",
+  "rule_description": "字符串数组必须\\0结尾",
+  "category": "变量使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "字符串检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-1-2",
+  "rule_name": "虚拟基类指针转换为派生类指针必须使用dynamic_cast转换",
+  "rule_description": "虚基类指针转换必须用dynamic_cast",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型转换操作符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-1-3",
+  "rule_name": "菱形层次结构的派生设计，对基类派生必须使用virtual说明",
+  "rule_description": "菱形继承必须用virtual",
+  "category": "类设计",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "继承关系检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-1-4",
+  "rule_name": "抽象类中的复制操作符重载必须是保护的或私有的",
+  "rule_description": "抽象类复制操作符必须protected/private",
+  "category": "类设计",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "访问修饰符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-2-2",
+  "rule_name": "类中必须明确定义缺省构造函数",
+  "rule_description": "类必须有默认构造函数",
+  "category": "类定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类结构检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-2-3",
+  "rule_name": "单参数构造函数必须使用explicit声明",
+  "rule_description": "单参数构造函数需要explicit",
+  "category": "类定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "构造函数检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-2-5",
+  "rule_name": "派生类构造函数必须在初始化列表中说明直接基类构造函数",
+  "rule_description": "派生类构造函数需要基类初始化",
+  "category": "类定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "初始化列表检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-3-1",
+  "rule_name": "具有虚拟成员函数的类，析构函数必须是虚拟的",
+  "rule_description": "有虚函数的类析构函数必须虚拟",
+  "category": "类定义",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "虚函数检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-4-1",
+  "rule_name": "基类虚拟函数的参数缺省值在派生类重写函数中禁止被改变",
+  "rule_description": "重写虚函数不能改变默认参数",
+  "category": "虚函数",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "函数签名检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-4-2",
+  "rule_name": "派生类对基类虚拟函数重写的声明必须使用virtual显示说明",
+  "rule_description": "重写虚函数必须用virtual",
+  "category": "虚函数",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "关键字检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-4-3",
+  "rule_name": "禁止非纯虚函数被纯虚拟函数重写",
+  "rule_description": "非纯虚函数不能被纯虚函数重写",
+  "category": "虚函数",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "虚函数检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-5-1",
+  "rule_name": "禁止将不相关的指针类型强制转换为对象指针类型",
+  "rule_description": "不相关指针不能强制转换",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "指针转换检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-5-2",
+  "rule_name": "指针或引用的类型转换中禁止移除const或volatile属性",
+  "rule_description": "类型转换不能移除const/volatile",
+  "category": "类型转换",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "语法分析",
+  "detection_method": "类型修饰符检查",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-3-3",
+  "rule_name": "禁止对参数指针进行赋值",
+  "rule_description": "参数指针不能赋值",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "数据流分析",
+  "detection_method": "指针使用模式分析",
+  "keywords": [
+   {
+    "keyword": "参数指针",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "赋值",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-3-4",
+  "rule_name": "禁止将局部变量地址作为函数返回值返回",
+  "rule_description": "局部变量地址不能返回",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "生命周期分析",
+  "detection_method": "作用域和生命周期跟踪",
+  "keywords": [
+   {
+    "keyword": "局部变量",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "地址",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "返回值",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-3-5",
+  "rule_name": "禁止使用或释放未分配空间或已被释放的指针",
+  "rule_description": "不能使用未分配或已释放指针",
+  "category": "内存管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "指针别名分析",
+  "detection_method": "指针生命周期跟踪",
+  "keywords": [
+   {
+    "keyword": "指针",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "未分配",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "已释放",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-3-6",
+  "rule_name": "指针变量被释放后必须设置为NULL",
+  "rule_description": "释放后指针必须置NULL",
+  "category": "内存管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "数据流分析",
+  "detection_method": "指针状态跟踪",
+  "keywords": [
+   {
+    "keyword": "指针",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "释放",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "NULL",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-3-8",
+  "rule_name": "动态分配的指针变量第一次使用前必须进行是否为NULL的判别",
+  "rule_description": "指针使用前必须检查NULL",
+  "category": "指针使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "路径分析",
+  "detection_method": "执行路径分析",
+  "keywords": [
+   {
+    "keyword": "指针",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "NULL",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "判别",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-3-10",
+  "rule_name": "禁止文件指针在退出时没有关闭文件",
+  "rule_description": "文件指针必须关闭",
+  "category": "资源管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "资源跟踪",
+  "detection_method": "文件指针生命周期分析",
+  "keywords": [
+   {
+    "keyword": "文件指针",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "关闭",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-14",
+  "rule_name": "缓存区读取禁止操作越界",
+  "rule_description": "缓冲区读取不能越界",
+  "category": "内存安全",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "边界分析",
+  "detection_method": "数组边界和数据流分析",
+  "keywords": [
+   {
+    "keyword": "缓存区",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "读取",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "越界",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-15",
+  "rule_name": "缓存区写入禁止操作越界",
+  "rule_description": "缓冲区写入不能越界",
+  "category": "内存安全",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "边界分析",
+  "detection_method": "数组边界和数据流分析",
+  "keywords": [
+   {
+    "keyword": "缓存区",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "写入",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "越界",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-16",
+  "rule_name": "禁止使用已被释放了的内存空间",
+  "rule_description": "不能使用已释放内存",
+  "category": "内存管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "内存状态跟踪",
+  "detection_method": "内存分配释放状态分析",
+  "keywords": [
+   {
+    "keyword": "内存",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "已释放",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-17",
+  "rule_name": "被free的指针必须指向最初malloc/calloc分配的地址",
+  "rule_description": "free指针必须是原始分配地址",
+  "category": "内存管理",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "指针来源跟踪",
+  "detection_method": "指针变化历史分析",
+  "keywords": [
+   {
+    "keyword": "free",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "malloc",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "calloc",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-19",
+  "rule_name": "使用字符串赋值、拷贝、追加等函数时，禁止目标字符串储存空间越界",
+  "rule_description": "字符串操作不能越界",
+  "category": "字符串安全",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "长度分析",
+  "detection_method": "字符串长度和缓冲区分析",
+  "keywords": [
+   {
+    "keyword": "字符串",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "越界",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-4-2",
+  "rule_name": "条件判断分支如果为空，必须以单独一行的分号加注释进行明确说明",
+  "rule_description": "空分支必须有注释说明",
+  "category": "控制流",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "意图分析",
+  "detection_method": "程序员意图理解",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-8-1",
+  "rule_name": "禁止不可达语句",
+  "rule_description": "不能有不可达语句",
+  "category": "控制流",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "可达性分析",
+  "detection_method": "复杂控制流分析",
+  "keywords": [
+   {
+    "keyword": "不可达",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "语句",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-8-2",
+  "rule_name": "禁止不可达分支",
+  "rule_description": "不能有不可达分支",
+  "category": "控制流",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "分支可达性分析",
+  "detection_method": "执行路径分析",
+  "keywords": [
+   {
+    "keyword": "不可达",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "分支",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-2",
+  "rule_name": "禁止将越界整数赋给整型变量",
+  "rule_description": "整数赋值不能越界",
+  "category": "类型转换",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "数值范围分析",
+  "detection_method": "数值范围和类型转换分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-1-6-8",
+  "rule_name": "数组禁止越界使用",
+  "rule_description": "数组不能越界访问",
+  "category": "数组访问",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "边界分析",
+  "detection_method": "复杂数组边界分析",
+  "keywords": [
+   {
+    "keyword": "数组",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "越界",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-6-12",
+  "rule_name": "除法运算中禁止被零除",
+  "rule_description": "除法不能被零除",
+  "category": "运算安全",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "数值分析",
+  "detection_method": "除数值分析",
+  "keywords": [
+   {
+    "keyword": "除法",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "被零除",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-7-7",
+  "rule_name": "有返回值的函数必须通过返回语句返回",
+  "rule_description": "有返回值函数必须有return",
+  "category": "函数返回",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "路径分析",
+  "detection_method": "所有执行路径分析",
+  "keywords": [
+   {
+    "keyword": "返回值",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "返回语句",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-7-13",
+  "rule_name": "静态函数必须被使用",
+  "rule_description": "静态函数必须有调用",
+  "category": "函数使用",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "全程序分析",
+  "detection_method": "函数调用图分析",
+  "keywords": [
+   {
+    "keyword": "静态函数",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "使用",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-7-14",
+  "rule_name": "禁止同一个表达式中调用多个顺序相关函数",
+  "rule_description": "表达式中不能多个顺序相关函数调用",
+  "category": "函数调用",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "副作用分析",
+  "detection_method": "函数副作用和依赖分析",
+  "keywords": [
+   {
+    "keyword": "表达式",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "顺序相关",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-9-3",
+  "rule_name": "禁止在for循环体内部修改循环控制变量",
+  "rule_description": "for循环体内不能修改控制变量",
+  "category": "循环控制",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "数据流分析",
+  "detection_method": "循环体内变量修改路径分析",
+  "keywords": [
+   {
+    "keyword": "for循环",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "控制变量",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "修改",
+    "keyword_type": "secondary"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-1-11-1",
+  "rule_name": "变量禁止未赋值就使用",
+  "rule_description": "变量使用前必须赋值",
+  "category": "变量使用",
+  "accuracy_type": "uncertain",
+  "analysis_complexity": "数据流分析",
+  "detection_method": "复杂数据流分析",
+  "keywords": [
+   {
+    "keyword": "变量",
+    "keyword_type": "primary"
+   },
+   {
+    "keyword": "未赋值",
+    "keyword_type": "secondary"
+   },
+   {
+    "keyword": "未初始化",
+    "keyword_type": "alias"
+   }
+  ]
+ },
+ {
+  "rule_code": "R-2-1-1",
+  "rule_name": "含有动态分配成员的类，必须编写拷贝构造函数，并重载赋值操作符",
+  "rule_description": "动态成员类必须有拷贝构造和赋值操作符",
+  "category": "类设计",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "资源管理分析",
+  "detection_method": "类成员和资源管理模式分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-2-1",
+  "rule_name": "构造函数中禁止使用全局变量",
+  "rule_description": "构造函数不能用全局变量",
+  "category": "构造函数",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "依赖分析",
+  "detection_method": "构造函数执行上下文分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-2-4",
+  "rule_name": "类中所有成员变量必须在构造函数中初始化",
+  "rule_description": "成员变量必须在构造函数初始化",
+  "category": "构造函数",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "初始化路径分析",
+  "detection_method": "所有构造函数路径分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-3-2",
+  "rule_name": "析构函数中禁止存在不是由自身捕获处理的异常",
+  "rule_description": "析构函数不能有未捕获异常",
+  "category": "异常处理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "异常传播分析",
+  "detection_method": "异常传播路径分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-6-1",
+  "rule_name": "使用new分配的内存空间，用完后必须使用delete释放",
+  "rule_description": "new分配内存必须delete释放",
+  "category": "内存管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "对象生命周期跟踪",
+  "detection_method": "对象生命周期分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-6-2",
+  "rule_name": "必须delete释放new分配的内存空间",
+  "rule_description": "必须delete释放new内存",
+  "category": "内存管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "内存配对分析",
+  "detection_method": "内存分配释放配对分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "R-2-6-3",
+  "rule_name": "被delete的指针必须使用new分配的地址",
+  "rule_description": "delete指针必须是new分配的",
+  "category": "内存管理",
+  "accuracy_type": "accurate",
+  "analysis_complexity": "指针来源跟踪",
+  "detection_method": "指针来源跟踪",
+  "keywords": []
+ }
+]

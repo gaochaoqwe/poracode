@@ -1,0 +1,1219 @@
+{
+  "template_info": {
+    "name": "GJB 438C 软件设计说明",
+    "file": "[11][SDD] 软件设计说明-438C-2021.docx",
+    "encoding": "gbk",
+    "sections": []
+  },
+  "structure": {
+    "1": {
+      "title": "范围",
+      "placeholders": [
+        {
+          "id": "1.1",
+          "name": "标识",
+          "type": "content_generation",
+          "replacement_pattern": "本条应描述本文档所适用软件的完整标识，适用时，包括其标识号、名称、缩略名、版本号和发布号。",
+          "content": "本文档适用于编译器软件系统（BYQ），标识号为BYQ-SDD-V2.0，版本号为V2.0，发布号为Release 1。该软件由四川大学网络空间安全学院开发，用于教学与研究目的。"
+        },
+        {
+          "id": "1.2",
+          "name": "系统概述",
+          "type": "content_generation",
+          "replacement_pattern": "本条应概述本文档所适用软件的用途。它还应描述软件的一般特性",
+          "content": "本项目是一个用于教学与研究目的的编译器系统，能够将高级编程语言源代码转换为目标机器的汇编代码或中间代码。 系统组成与外部交联关系见图。",
+          "subsections": {
+            "1.2.1": {
+              "name": "系统和软件的用途",
+              "replacement_pattern": "本条应说明系统和软件的用途，包括系统用途与主要功能。",
+              "content": "编译器系统用于计算机科学与编程语言理论的教学与研究，主要功能包括词法分析、语法分析、语义分析、代码生成、代码优化和错误处理。"
+            },
+            "1.2.2": {
+              "name": "开发、运行和维护的历史",
+              "replacement_pattern": "软件开发、运行和维护的历史见表。",
+              "content": "编译器软件的开发、运行和维护历史见表1-1。"
+            },
+            "1.2.3": {
+              "name": "项目相关方标识",
+              "replacement_pattern": "项目相关方见表。",
+              "content": "编译器软件的项目相关方见表1-2。"
+            },
+            "1.2.4": {
+              "name": "项目运行现场",
+              "replacement_pattern": "当前和计划运行现场见表。",
+              "content": "编译器软件当前和计划的运行现场见表1-3。"
+            }
+          }
+        },
+        {
+          "id": "1.3",
+          "name": "文档概述",
+          "type": "content_generation",
+          "replacement_pattern": "本条应概述本文档的用途和内容，并描述与它的使用有关的保密性方面的要求。",
+          "content": "本文档规定了编译器软件系统的设计方案，包括CSCI级设计决策、体系结构设计、详细设计以及需求可追踪性。本文档为内部文档，仅限内部使用。"
+        }
+      ],
+      "tables": [
+        {
+          "table_id": "software_identity",
+          "locator_rows": [
+            [
+              "序号",
+              "软件名称",
+              "软件简称",
+              "软件标识号",
+              "版本号",
+              "发布号"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "name",
+            "short_name",
+            "identifier",
+            "version",
+            "release"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "name": "编译器",
+              "short_name": "BYQ",
+              "identifier": "BYQ-RJ-001",
+              "version": "V2.0",
+              "release": "Release 1"
+            }
+          ]
+        },
+        {
+          "table_id": "dev_history",
+          "locator_rows": [
+            [
+              "版本号",
+              "开发历史",
+              "运行历史",
+              "维护历史"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "version",
+            "dev_history",
+            "run_history",
+            "maint_history"
+          ],
+          "rows": [
+            {
+              "version": "V1.0",
+              "dev_history": "2025年3月首次开发词法分析、语法分析与语义分析模块。",
+              "run_history": "2025年5月完成功能验证。",
+              "maint_history": "无"
+            }
+          ]
+        },
+        {
+          "table_id": "stakeholders",
+          "locator_rows": [
+            [
+              "序号",
+              "相关方",
+              "单位"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "party",
+            "unit"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "party": "用户",
+              "unit": "教学科研用户"
+            },
+            {
+              "number": "2",
+              "party": "需方",
+              "unit": "四川大学网络空间安全学院"
+            },
+            {
+              "number": "3",
+              "party": "开发方",
+              "unit": "四川大学网络空间安全学院"
+            },
+            {
+              "number": "4",
+              "party": "保障机构",
+              "unit": "四川大学网络空间安全学院"
+            }
+          ]
+        },
+        {
+          "table_id": "sites",
+          "locator_rows": [
+            [
+              "项目",
+              "运行现场",
+              "备注"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "item",
+            "site",
+            "note"
+          ],
+          "rows": [
+            {
+              "item": "当前项目",
+              "site": "学院实验室",
+              "note": "Windows/Linux"
+            },
+            {
+              "item": "计划项目",
+              "site": "教学机房",
+              "note": "无"
+            }
+          ]
+        }
+      ]
+    },
+    "2": {
+      "title": "引用文档",
+      "type": "content_generation",
+      "replacement_pattern": "本章应列出引用文档的编号、标题、编写单位、修订版及日期",
+      "content": "本章列出本设计说明所引用的标准、规范和相关文档。",
+      "tables": [
+        {
+          "table_id": "reference_documents",
+          "locator_rows": [
+            [
+              "序号",
+              "名称",
+              "版本",
+              "发布日期",
+              "来源"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "name",
+            "version",
+            "release_date",
+            "source"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "name": "《GJB 438C-2021 软件研制文档要求》",
+              "version": "2021",
+              "release_date": "2021-01-01",
+              "source": "中央军委装备发展部"
+            }
+          ]
+        }
+      ]
+    },
+    "3": {
+      "title": "CSCI级设计决策",
+      "type": "content_generation",
+      "replacement_pattern": "本章应根据需要分条给出CSCI级设计决策",
+      "content": "本章给出编译器CSCI级设计决策。\n\n任务模型方案选择：编译器职责相对单一、实时性要求不高，采用单任务顺序执行模型完成全部编译流程。\n\n设计方法和工具选择：采用结构化分析与设计方法，自顶向下逐层功能分解；使用词法/语法生成工具辅助设计。\n\n设计模式选择：采用基于阶段的流水线设计模式，前端（词法/语法/语义分析）与后端（代码生成/优化）解耦。\n\n关键需求实现：性能需求采用哈希符号表与线性扫描寄存器分配；可靠性需求对内存分配与数组访问进行边界检查；安全性需求对输入文件进行格式与编码校验。\n\n重用决策：复用标准指令模式库与基础数据结构库，减轻开发工作量。\n\n接口设计决策：与文件系统通过本地文件读写交互，与用户通过命令行参数交互。"
+    },
+    "4.1": {
+      "title": "CSCI部件",
+      "type": "content_generation",
+      "content": "本条描述构成编译器CSCI的所有软件单元及其静态关系、用途、开发状态与资源占用。",
+      "placeholders": [
+        {
+          "id": "4.1.1",
+          "name": "软件单元静态关系",
+          "type": "content_generation",
+          "replacement_pattern": "本条应说明各级软件单元的静态关系，并给出软件单元列表。",
+          "content": "各级软件单元的静态关系及唯一标识符见软件单元列表；若软件层次较多、体系较复杂，可分多张结构图逐级描述。"
+        }
+      ],
+      "tables": [
+        {
+          "table_id": "unit_list",
+          "locator_rows": [
+            [
+              "序号",
+              "CSC",
+              "CSU",
+              "标识符",
+              "是否重用"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "csc",
+            "csu",
+            "identifier",
+            "reuse"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "csc": "前端",
+              "csu": "词法分析",
+              "identifier": "Lexer",
+              "reuse": "否"
+            },
+            {
+              "number": "2",
+              "csc": "前端",
+              "csu": "语法分析",
+              "identifier": "Parser",
+              "reuse": "否"
+            },
+            {
+              "number": "3",
+              "csc": "前端",
+              "csu": "语义分析",
+              "identifier": "SemanticAnalyzer",
+              "reuse": "否"
+            },
+            {
+              "number": "4",
+              "csc": "后端",
+              "csu": "目标代码生成",
+              "identifier": "CodeGenerator",
+              "reuse": "是"
+            }
+          ]
+        }
+      ],
+      "subsections": {
+        "4.1.2": {
+          "name": "数据处理单元",
+          "content": "该CSC的软件单元列表与功能性能分配如下。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "unit_alloc",
+              "caption": "表4-X 数据处理描述",
+              "data_start_row": 2,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "id": "DATAINPRC",
+                  "alloc_type": "功能",
+                  "requirement": "完成数据处理相关的功能"
+                },
+                {
+                  "id": "DATAINPRC",
+                  "alloc_type": "性能",
+                  "requirement": "满足实时性指标"
+                }
+              ]
+            }
+          ],
+          "subsections": {
+            "4.1.2.1": {
+              "name": "数据解析单元",
+              "content": "该软件单元分配的功能和性能如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "unit_alloc",
+                  "caption": "表4-X 数据解析描述",
+                  "data_start_row": 2,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "id": "DataPars",
+                      "alloc_type": "功能",
+                      "requirement": "完成源程序解析并构建抽象语法树"
+                    },
+                    {
+                      "id": "DataPars",
+                      "alloc_type": "性能",
+                      "requirement": "10000行源代码解析时间不超过5秒"
+                    }
+                  ]
+                }
+              ]
+            },
+            "4.1.2.2": {
+              "name": "加载数据管理单元",
+              "content": "该软件单元分配的功能和性能如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "unit_alloc",
+                  "caption": "表4-X 加载数据管理描述",
+                  "data_start_row": 2,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "id": "DataLoad",
+                      "alloc_type": "功能",
+                      "requirement": "完成加载数据的读取与管理"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "4.1.3": {
+          "name": "运行支撑单元",
+          "content": "该软件单元分配的功能和性能如下。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "unit_alloc",
+              "caption": "表4-X 运行支撑描述",
+              "data_start_row": 2,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "id": "Runtime",
+                  "alloc_type": "功能",
+                  "requirement": "提供编译期运行支撑与错误诊断"
+                }
+              ]
+            }
+          ],
+          "subsections": {
+            "4.1.3.1": {
+              "name": "错误处理单元",
+              "content": "该软件单元分配的功能和性能如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "unit_alloc",
+                  "caption": "表4-X 错误处理描述",
+                  "data_start_row": 2,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "id": "ErrorHandler",
+                      "alloc_type": "功能",
+                      "requirement": "统一收集、分类并输出编译错误"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "4.2": {
+      "title": "执行方案",
+      "type": "content_generation",
+      "content": "本条说明编译器软件单元间的执行方案和动态关系。",
+      "placeholders": [
+        {
+          "id": "4.2.1",
+          "name": "CSCI级执行方案",
+          "type": "content_generation",
+          "replacement_pattern": "本条应描述 CSCI 级执行方案，包括任务/中断划分、任务模型、任务时序与任务调用。",
+          "content": "本CSCI采用多任务模型：分为接口处理任务与解算任务，接口处理任务优先级最高。各任务通过信号量与共享内存进行数据同步。"
+        },
+        {
+          "id": "4.2.1.model",
+          "name": "任务模型",
+          "type": "content_generation",
+          "replacement_pattern": "任务并发模型见图。",
+          "content": "任务并发模型见图。"
+        },
+        {
+          "id": "4.2.1.seq",
+          "name": "任务时序",
+          "type": "content_generation",
+          "replacement_pattern": "任务时序见图。",
+          "content": "任务时序见图。"
+        }
+      ],
+      "tables": [
+        {
+          "table_id": "task_desc",
+          "locator_rows": [
+            [
+              "序号",
+              "任务名称",
+              "优先级",
+              "标识符",
+              "任务描述"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "name",
+            "priority",
+            "identifier",
+            "description"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "name": "接口处理",
+              "priority": "高",
+              "identifier": "TASK_DataIO",
+              "description": "接收并分发外部数据"
+            },
+            {
+              "number": "2",
+              "name": "解算",
+              "priority": "中",
+              "identifier": "TASK_Solve",
+              "description": "完成核心解算与输出"
+            }
+          ]
+        },
+        {
+          "table_id": "irq_desc",
+          "locator_rows": [
+            [
+              "序号",
+              "中断名称",
+              "中断类型",
+              "优先级",
+              "中断服务标识符",
+              "中断服务功能描述"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "name",
+            "type",
+            "priority",
+            "identifier",
+            "description"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "name": "看门狗",
+              "type": "硬中断",
+              "priority": "3",
+              "identifier": "ISR_WatchDog",
+              "description": "定时释放信号量触发接口处理任务"
+            }
+          ]
+        },
+        {
+          "table_id": "task_calls",
+          "locator_rows": [
+            [
+              "序号",
+              "任务标识符",
+              "直接调用的软件单元",
+              "备注"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "task_identifier",
+            "units",
+            "note"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "task_identifier": "TASK_DataIO",
+              "units": "词法分析器、语法分析器",
+              "note": "无"
+            },
+            {
+              "number": "2",
+              "task_identifier": "TASK_Solve",
+              "units": "语义分析器、目标代码生成器",
+              "note": "无"
+            }
+          ]
+        }
+      ],
+      "subsections": {
+        "4.2.2.1": {
+          "name": "接口处理任务执行方案",
+          "content": "接口处理任务完成对外部数据的接收与分发，其执行方案见图。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "exec_rule",
+              "caption": "表4-X 接口处理任务执行规则",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "name": "优先级规则",
+                  "content": "接口处理任务优先级最高，收到数据后立即分发。"
+                }
+              ]
+            }
+          ]
+        },
+        "4.2.2.2": {
+          "name": "解算任务执行方案",
+          "content": "解算任务完成核心解算与输出，其执行方案见图。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "exec_rule",
+              "caption": "表4-X 解算任务执行规则",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "name": "调度规则",
+                  "content": "接收到完整数据后触发解算，解算完成输出结果。"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "4.3": {
+      "title": "接口设计",
+      "type": "content_generation",
+      "content": "本条说明编译器CSCI的对外接口与内部接口。",
+      "placeholders": [
+        {
+          "id": "4.3.1",
+          "name": "接口标识和接口图",
+          "type": "content_generation",
+          "replacement_pattern": "本条应说明赋予每个接口的唯一标识符",
+          "content": "本条通过唯一标识符标识编译器CSCI的各个接口，接口实体包括编译器与文件系统、用户等。"
+        },
+        {
+          "id": "4.3.1.1",
+          "name": "CSCI外部接口组成",
+          "type": "content_generation",
+          "replacement_pattern": "外部接口关系见图。",
+          "content": "编译器CSCI与外部实体的接口关系见图。"
+        },
+        {
+          "id": "4.3.1.3",
+          "name": "任务接口组成",
+          "type": "content_generation",
+          "replacement_pattern": "任务接口关系见图。",
+          "content": "任务间的接口关系见图。"
+        }
+      ],
+      "tables": [
+        {
+          "table_id": "external_interfaces",
+          "locator_rows": [
+            [
+              "序号",
+              "接口名称",
+              "接口标识",
+              "来源",
+              "目的地",
+              "接口简述"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "name",
+            "identifier",
+            "source",
+            "destination",
+            "description"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "name": "源代码读取",
+              "identifier": "SRC_JK_BYQ_Read",
+              "source": "文件系统",
+              "destination": "编译器",
+              "description": "读入源程序文本"
+            }
+          ]
+        },
+        {
+          "table_id": "task_interface",
+          "locator_rows": [
+            [
+              "序号",
+              "标识号",
+              "其他任务",
+              "接口类型",
+              "接口描述"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "identifier",
+            "other_task",
+            "if_type",
+            "description"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "identifier": "IN_TSK_Front",
+              "other_task": "TASK_Back",
+              "if_type": "共享变量",
+              "description": "向下游传递抽象语法树"
+            }
+          ]
+        }
+      ],
+      "subsections": {
+        "4.3.2": {
+          "name": "文件系统输入接口",
+          "content": "本条描述编译器CSCI与文件系统之间的源代码读取接口。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "data_elem",
+              "caption": "表4-X 数据元素的特征",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "number": "1",
+                  "if_id": "SRC_JK_BYQ_Read",
+                  "name": "源代码文本",
+                  "dimension": "-",
+                  "range": "可打印字符",
+                  "precision": "-",
+                  "var_id": "src",
+                  "data_type": "string"
+                }
+              ]
+            },
+            {
+              "type": "table",
+              "prototype": "comm",
+              "caption": "表4-X 接口通讯方法特征",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "number": "1",
+                  "if_id": "SRC_JK_BYQ_Read",
+                  "object": "文件系统",
+                  "link": "本地文件系统",
+                  "message": "字符流",
+                  "period": "按需",
+                  "priority": "不适用"
+                }
+              ]
+            }
+          ]
+        },
+        "4.3.3": {
+          "name": "文件系统输出接口",
+          "content": "本条描述编译器CSCI与文件系统之间的目标代码写入接口。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "data_elem",
+              "caption": "表4-X 数据元素的特征",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "number": "1",
+                  "if_id": "TGT_JK_BYQ_Write",
+                  "name": "目标汇编文本",
+                  "dimension": "-",
+                  "range": "目标汇编字符集",
+                  "precision": "-",
+                  "var_id": "out",
+                  "data_type": "string"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "5": {
+      "title": "CSCI详细设计",
+      "type": "content_generation",
+      "replacement_pattern": "本章应分为以下子条描述CSCI的软件单元",
+      "content": "本章分条描述编译器CSCI的软件单元。"
+    },
+    "6": {
+      "title": "需求可追踪性",
+      "type": "content_generation",
+      "replacement_pattern": "本章应包含:",
+      "content": "本章提供编译器CSCI软件单元与CSCI需求之间的双向可追踪性。",
+      "tables": [
+        {
+          "table_id": "forward_traceability",
+          "locator_rows": [
+            [
+              "类别",
+              "软件设计说明",
+              "软件设计说明",
+              "软件需求规格说明",
+              "软件需求规格说明"
+            ],
+            [
+              "类别",
+              "标识号",
+              "实现的软件设计",
+              "标识号",
+              "定义的软件需求"
+            ]
+          ],
+          "data_start_row": 2,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "category",
+            "design_id",
+            "design_desc",
+            "requirement_id",
+            "requirement_desc"
+          ],
+          "rows": [
+            {
+              "category": "功能",
+              "design_id": "Lexer",
+              "design_desc": "词法分析器",
+              "requirement_id": "3.2.1",
+              "requirement_desc": "词法分析能力"
+            },
+            {
+              "category": "性能",
+              "design_id": "Parser",
+              "design_desc": "语法分析器",
+              "requirement_id": "3.9",
+              "requirement_desc": "解析性能需求"
+            }
+          ]
+        },
+        {
+          "table_id": "reverse_traceability",
+          "locator_rows": [
+            [
+              "类别",
+              "软件需求规格说明",
+              "软件需求规格说明",
+              "软件设计说明",
+              "软件设计说明"
+            ],
+            [
+              "类别",
+              "标识号",
+              "定义的软件需求",
+              "标识号",
+              "实现的软件设计"
+            ]
+          ],
+          "data_start_row": 2,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "category",
+            "requirement_id",
+            "requirement_desc",
+            "design_id",
+            "design_desc"
+          ],
+          "rows": [
+            {
+              "category": "功能",
+              "requirement_id": "3.2.1",
+              "requirement_desc": "词法分析能力",
+              "design_id": "Lexer",
+              "design_desc": "词法分析器"
+            }
+          ]
+        }
+      ]
+    },
+    "7": {
+      "title": "注释",
+      "type": "content_generation",
+      "replacement_pattern": "本章应包括有助于了解文档的所有信息",
+      "content": "本章提供有助于了解本文档的术语定义和缩略语。\n\n术语定义：\n编译器（Compiler）：将高级编程语言源代码转换为目标代码的软件工具。\n词法分析（Lexical Analysis）：将源代码字符流分解为记号序列的过程。\n语法分析（Syntax Analysis）：根据语法规则分析记号序列，构建抽象语法树的过程。\n\n缩略语：\nAST - Abstract Syntax Tree（抽象语法树）\nSDD - Software Design Description（软件设计说明）\nCSCI - Computer Software Configuration Item（计算机软件配置项）"
+    },
+    "8": {
+      "title": "附录A 数据元素定义",
+      "type": "content_generation",
+      "tables": [
+        {
+          "table_id": "appendix_data_elements",
+          "locator_rows": [
+            [
+              "序号",
+              "名称",
+              "标识",
+              "类型",
+              "格式",
+              "单位",
+              "长度",
+              "精度",
+              "值域"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "number",
+            "name",
+            "identifier",
+            "type",
+            "format",
+            "unit",
+            "length",
+            "precision",
+            "range"
+          ],
+          "rows": [
+            {
+              "number": "1",
+              "name": "记号类型",
+              "identifier": "TokenType",
+              "type": "枚举",
+              "format": "-",
+              "unit": "-",
+              "length": "1",
+              "precision": "-",
+              "range": "0-99"
+            }
+          ]
+        },
+        {
+          "table_id": "appendix_structs",
+          "locator_rows": [
+            [
+              "结构标识",
+              "元素名称",
+              "标识符",
+              "类型",
+              "数组维数"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "struct_id",
+            "element",
+            "identifier",
+            "type",
+            "dimension"
+          ],
+          "rows": [
+            {
+              "struct_id": "Token",
+              "element": "类型",
+              "identifier": "type",
+              "type": "int",
+              "dimension": "1"
+            },
+            {
+              "struct_id": "Token",
+              "element": "文本",
+              "identifier": "text",
+              "type": "string",
+              "dimension": "1"
+            }
+          ]
+        },
+        {
+          "table_id": "appendix_enums",
+          "locator_rows": [
+            [
+              "枚举标识",
+              "元素名称",
+              "标识符"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "enum_id",
+            "element",
+            "identifier"
+          ],
+          "rows": [
+            {
+              "enum_id": "TokenType",
+              "element": "关键字",
+              "identifier": "KEYWORD"
+            },
+            {
+              "enum_id": "TokenType",
+              "element": "标识符",
+              "identifier": "IDENT"
+            }
+          ]
+        },
+        {
+          "table_id": "appendix_basic_types",
+          "locator_rows": [
+            [
+              "元素名称",
+              "标识符",
+              "类型",
+              "量纲",
+              "值域",
+              "精确度",
+              "长度",
+              "数组维数"
+            ]
+          ],
+          "data_start_row": 1,
+          "preserve_tail_rows": 0,
+          "columns": [
+            "name",
+            "identifier",
+            "type",
+            "dimension",
+            "range",
+            "precision",
+            "length",
+            "array_dim"
+          ],
+          "rows": [
+            {
+              "name": "行号",
+              "identifier": "line",
+              "type": "unsigned int",
+              "dimension": "-",
+              "range": "0-4294967295",
+              "precision": "-",
+              "length": "4",
+              "array_dim": "1"
+            }
+          ]
+        }
+      ]
+    },
+    "4.3.1.2": {
+      "title": "CSCI内部单元接口组成",
+      "type": "content_generation",
+      "content": "本条描述CSCI内部各单元之间的接口组成。",
+      "subsections": {
+        "4.3.1.2.1": {
+          "name": "词法分析单元内部接口",
+          "content": "该软件单元的内部接口见图。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "unit_if",
+              "caption": "表4-X 顶层单元接口项目",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "number": "1",
+                  "name": "记号流",
+                  "identifier": "CSU_Lexer_Tokens",
+                  "owner": "词法分析器",
+                  "description": "向语法分析器传递记号序列"
+                }
+              ]
+            }
+          ]
+        },
+        "4.3.1.2.2": {
+          "name": "语法分析单元内部接口",
+          "content": "该软件单元的内部接口见图。",
+          "blocks": [
+            {
+              "type": "table",
+              "prototype": "unit_if",
+              "caption": "表4-X 顶层单元接口项目",
+              "data_start_row": 1,
+              "preserve_tail_rows": 0,
+              "rows": [
+                {
+                  "number": "1",
+                  "name": "抽象语法树",
+                  "identifier": "CSU_Parser_AST",
+                  "owner": "语法分析器",
+                  "description": "向语义分析器传递语法树"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    "5.1": {
+      "title": "任务",
+      "type": "content_generation",
+      "content": "本条描述编译器各任务的设计。",
+      "subsections": {
+        "5.1.1": {
+          "name": "主控任务",
+          "content": "任务名称：主控任务\n任务优先级：100\n任务堆栈大小：2M\n任务类型：周期\n任务周期：20ms\n任务入口函数：main_task"
+        }
+      }
+    },
+    "5.2": {
+      "title": "中断",
+      "type": "content_generation",
+      "content": "本条描述编译器各中断的设计。",
+      "subsections": {
+        "5.2.1": {
+          "name": "看门狗中断",
+          "content": "中断名称：看门狗中断\n中断号：3\n优先级：3\n中断服务程序：ISR_WatchDog"
+        }
+      }
+    },
+    "5.3": {
+      "title": "单元",
+      "type": "content_generation",
+      "content": "按照5.3.1的方式描述所有软件单元的设计。",
+      "subsections": {
+        "5.3.1": {
+          "name": "词法分析器",
+          "content": "该软件单元完成源代码字符流到记号流的转换，标识符 Lexer。",
+          "subsections": {
+            "5.3.1.1": {
+              "name": "入口函数",
+              "content": "该软件单元的入口函数如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "entry_func",
+                  "caption": "表5-X 词法分析器入口函数",
+                  "data_start_row": 0,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "item": "单元名称",
+                      "content": "词法分析器"
+                    },
+                    {
+                      "item": "单元标识",
+                      "content": "Lexer"
+                    },
+                    {
+                      "item": "入口函数",
+                      "content": "int Lexer_Scan(void)"
+                    }
+                  ]
+                }
+              ]
+            },
+            "5.3.1.2": {
+              "name": "输入输出",
+              "content": "该软件单元的输入输出数据描述如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "io_data",
+                  "caption": "表5-X 词法分析器输入输出数据",
+                  "data_start_row": 1,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "number": "1",
+                      "name": "源代码字符流",
+                      "identifier": "src",
+                      "type": "string",
+                      "length": "-",
+                      "direction": "IN",
+                      "description": "待分析的源程序文本"
+                    },
+                    {
+                      "number": "2",
+                      "name": "记号序列",
+                      "identifier": "tokens",
+                      "type": "array",
+                      "length": "-",
+                      "direction": "OUT",
+                      "description": "识别出的记号序列"
+                    }
+                  ]
+                }
+              ]
+            },
+            "5.3.1.3": {
+              "name": "局部变量",
+              "content": "该软件单元使用的局部变量如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "local_var",
+                  "caption": "表5-X 词法分析器局部变量",
+                  "data_start_row": 1,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "number": "1",
+                      "name": "扫描缓冲区",
+                      "identifier": "buf",
+                      "type": "char[]",
+                      "length": "4096",
+                      "dimension": "-",
+                      "description": "存放当前扫描的字符"
+                    }
+                  ]
+                }
+              ]
+            },
+            "5.3.1.4": {
+              "name": "逻辑流程图",
+              "content": "词法分析器初始化扫描缓冲区，逐字符读入并按 DFA 状态转换识别记号，其主要逻辑见图。"
+            },
+            "5.3.1.5": {
+              "name": "规则与算法",
+              "content": "该软件单元的规则与算法如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "rule_algo",
+                  "caption": "表5-X 词法分析器规则和算法",
+                  "data_start_row": 1,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "name": "DFA 扫描",
+                      "content": "按最长匹配原则进行状态转换，识别关键字、标识符、常量、运算符和界符。"
+                    }
+                  ]
+                }
+              ]
+            },
+            "5.3.1.6": {
+              "name": "错误或异常处理",
+              "content": "该软件单元可能存在的错误与异常如下。",
+              "blocks": [
+                {
+                  "type": "table",
+                  "prototype": "error_handle",
+                  "caption": "表5-X 错误或异常处理",
+                  "data_start_row": 1,
+                  "preserve_tail_rows": 0,
+                  "rows": [
+                    {
+                      "number": "1",
+                      "error": "非法字符",
+                      "detection": "DFA 无可用转换",
+                      "handling": "记录词法错误（含行号列号）并跳过该字符继续扫描"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,199 @@
+import { startTransition, useRef } from "react";
+import { Trans } from "@lingui/react/macro";
+import type {
+  PromptSegment,
+  Thread,
+  ThreadConfig,
+  ThreadPresentationMode,
+} from "@/shared/contracts";
+import { resolveProjectLocation } from "@/shared/worktree";
+import { toggleMarkThreadDone } from "@/renderer/actions/threadActions";
+import type { ProviderHandoffContext } from "@/renderer/actions/providerHandoff";
+import { useAppStore } from "@/renderer/state/appStore";
+import { useExperimentStore } from "@/renderer/state/experimentStore";
+import { remoteOwner } from "@/renderer/state/remoteProjection";
+import { useProject, useThread } from "@/renderer/state/useThread";
+import type { ContinueIntent } from "@/renderer/components/thread/ContinueInProviderDialog";
+import { ThreadView } from "@/renderer/components/thread/ThreadView";
+import type { SaveClipboardImage } from "@/renderer/components/composer/useAttachments";
+import { useRemoteTerminalTransport } from "@/renderer/components/thread/useRemoteTerminalTransport";
+import { useDraggable, useDroppable } from "@dnd-kit/react";
+import { useIsDraggingPane, usePaneDropIndicatorState, type DragSourceData } from "@/renderer/dnd";
+import {
+  useThreadAgentStatuses,
+  useProjectAgentStatuses,
+  useThreadPendingLaunch,
+} from "@/renderer/hooks/uiSelectors";
+import { useRemoteServersStore } from "@/renderer/state/remoteServersStore";
+
+// Non-subscribing action read: these stable store actions don't need a
+// subscription, and aliasing keeps the render path from referencing the hook
+// as a value.
+const getAppState = useAppStore.getState;
+
+export function ThreadPane(props: {
+  threadId: string;
+  paneCount: number;
+  paneAlign: "left" | "center" | "right";
+  headerNeedsTrafficLightPad?: boolean;
+  onClose: () => void;
+  onContinueInProvider?: (
+    sourceThread: Thread,
+    targetKind: string,
+    targetConfig: ThreadConfig,
+    targetPresentationMode: ThreadPresentationMode,
+    prompt: string,
+    segments: PromptSegment[] | undefined,
+    intent: ContinueIntent,
+    handoffContext: ProviderHandoffContext,
+  ) => void;
+}) {
+  const thread = useThread(props.threadId);
+  const experiment = useExperimentStore((state) =>
+    thread?.groupId ? state.experiments[thread.groupId] : undefined,
+  );
+  const project = useProject(thread?.projectId);
+  const installedAgents = useThreadAgentStatuses({
+    remoteServerId: thread?.remoteServerId,
+    projectLocation: project?.location,
+  });
+  const projectAgentStatuses = useProjectAgentStatuses(project?.location);
+  const remoteRuntime = useRemoteServersStore((state) =>
+    thread?.remoteServerId ? state.runtime[thread.remoteServerId] : undefined,
+  );
+  const remoteTerminalTransport = useRemoteTerminalTransport(props.threadId);
+  const remoteAgentStatuses =
+    project?.location.kind === "wsl"
+      ? remoteRuntime?.agentStatuses?.wsl
+      : remoteRuntime?.agentStatuses?.windows;
+  const effectiveAgentStatuses = thread?.remoteServerId
+    ? (remoteAgentStatuses ?? [])
+    : projectAgentStatuses;
+  const agentStatus = effectiveAgentStatuses.find((status) => status.kind === thread?.agentKind);
+  const {
+    prompt: pendingLaunchPrompt,
+    segments: pendingLaunchSegments,
+    userMessageItemId: pendingLaunchUserMessageItemId,
+    providerSwitch: pendingLaunchProviderSwitch,
+    mentionHandoff: pendingLaunchMentionHandoff,
+  } = useThreadPendingLaunch(props.threadId);
+  const { applyRuntimeEvent, updateThreadRuntime, consumeThreadLaunch } = getAppState();
+
+  const paneElementRef = useRef<HTMLDivElement>(null);
+  const { handleRef } = useDraggable({
+    id: `pane:${props.threadId}`,
+    type: "pane",
+    data: { type: "pane", paneId: props.threadId } satisfies DragSourceData,
+    disabled: props.paneCount <= 1,
+    element: paneElementRef,
+  });
+  useDroppable({
+    id: `pane-drop:${props.threadId}`,
+    accept: ["pane", "thread", "new-thread"],
+    data: { type: "pane-drop-zone", paneId: props.threadId },
+    element: paneElementRef,
+  });
+
+  const isDragging = useIsDraggingPane(props.threadId);
+  const dropIndicator = usePaneDropIndicatorState(props.threadId);
+  const owner = remoteOwner(thread);
+  const remoteDesktopId = owner?.desktopId;
+  const remoteThreadId = owner?.remoteId;
+  function pickRemoteFiles() {
+    if (!remoteDesktopId || !remoteThreadId) return Promise.resolve(null);
+    return useRemoteServersStore.getState().pickAndUploadFiles(remoteDesktopId, remoteThreadId);
+  }
+  // Pasted images must land on the host desktop — the agent runs there and
+  // can't read a path saved on this machine.
+  const saveRemoteClipboardImage: SaveClipboardImage | undefined =
+    remoteDesktopId && remoteThreadId
+      ? (input) =>
+          useRemoteServersStore
+            .getState()
+            .saveClipboardImage(remoteDesktopId, { ...input, threadId: remoteThreadId })
+      : undefined;
+  if (!thread) return null;
+  if (!project) return null;
+  if (experiment && !thread.worktreePath) {
+    return (
+      <div
+        ref={paneElementRef}
+        className="flex h-full min-w-0 flex-1 items-center justify-center px-6 text-center text-sm text-foreground-muted"
+      >
+        <Trans>The experiment candidate worktree is unavailable.</Trans>
+      </div>
+    );
+  }
+  const projectLocation = resolveProjectLocation(project.location, thread.worktreePath);
+  return (
+    <ThreadView
+      thread={thread}
+      projectName={project.name}
+      agentStatus={agentStatus}
+      isWsl={project.location.kind === "wsl"}
+      showCloseButton
+      paneAlign={props.paneAlign}
+      isDragging={isDragging}
+      dropIndicator={dropIndicator}
+      paneCount={props.paneCount}
+      headerNeedsTrafficLightPad={props.headerNeedsTrafficLightPad}
+      dragHandleRef={handleRef}
+      droppableRef={paneElementRef}
+      onClose={props.onClose}
+      {...(!experiment
+        ? {
+            onMarkDone: () => {
+              toggleMarkThreadDone(props.threadId);
+            },
+          }
+        : {})}
+      projectLocation={projectLocation}
+      onLaunchConsumed={() => consumeThreadLaunch(thread.id)}
+      onLaunchFailed={(message) => {
+        startTransition(() => {
+          applyRuntimeEvent(thread.id, {
+            type: "error",
+            threadId: thread.id,
+            message,
+          });
+          updateThreadRuntime(thread.id, {
+            status: "error",
+            attention: "error",
+            ...(thread.sessionRef ? { sessionRef: thread.sessionRef } : {}),
+            canResumeWithConfig: thread.canResumeWithConfig || thread.sessionRef !== undefined,
+          });
+        });
+      }}
+      {...(pendingLaunchPrompt !== undefined ? { pendingLaunchPrompt } : {})}
+      {...(pendingLaunchSegments ? { pendingLaunchSegments } : {})}
+      {...(pendingLaunchUserMessageItemId ? { pendingLaunchUserMessageItemId } : {})}
+      {...(pendingLaunchProviderSwitch ? { pendingLaunchProviderSwitch } : {})}
+      {...(pendingLaunchMentionHandoff ? { pendingLaunchMentionHandoff: true } : {})}
+      installedAgents={installedAgents}
+      {...(thread.remoteServerId
+        ? {
+            canShowProjectEntryInExplorer: false,
+            remoteTerminalTransport,
+            pickFiles: pickRemoteFiles,
+          }
+        : {})}
+      {...(saveRemoteClipboardImage ? { saveClipboardImage: saveRemoteClipboardImage } : {})}
+      onContinueInProvider={
+        props.onContinueInProvider
+          ? (targetKind, tConfig, targetPresentationMode, prompt, segments, intent, ctx) => {
+              props.onContinueInProvider?.(
+                thread,
+                targetKind,
+                tConfig,
+                targetPresentationMode,
+                prompt,
+                segments,
+                intent,
+                ctx,
+              );
+            }
+          : undefined
+      }
+    />
+  );
+}

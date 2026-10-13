@@ -1,0 +1,1678 @@
+import { randomUUID } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
+import { spawn } from "node-pty";
+import {
+  applyHomeScopePermissions,
+  type UnrestrictedPermissionCapabilities,
+} from "@/shared/agents/unrestrictedPermissions";
+import {
+  type AgentKind,
+  type CloseThreadPayload,
+  type ProjectLocation,
+  type PromptSegment,
+  type SessionRef,
+  type StartThreadPayload,
+  type StartThreadResult,
+  type TerminalSize,
+  type ThreadAttention,
+  type ThreadConfig,
+  type ThreadPresentationMode,
+  type ThreadStatus,
+  type BuiltInMcpServerId,
+  type McpLaunchSnapshot,
+  type ResolvedMcpServer,
+  BUILT_IN_MCP_SERVER_NAMES,
+  DEFAULT_MCP_SERVER_TIMEOUT_MS,
+  resolveEnabledMcpServers,
+} from "@/shared/contracts";
+import type { McpThreadIdentity } from "@/shared/browserMcpThread";
+import { msg } from "@/shared/messages";
+import type { AgentNativePlugin } from "@/supervisor/agents/base";
+import {
+  resolveBrowserMcpHttpConfigForLaunch,
+  type BrowserMcpHttpConfig,
+} from "@/supervisor/agents/browserMcp";
+import {
+  resolveCrossagentMcpHttpConfigForLaunch,
+  type CrossagentMcpHttpConfig,
+} from "@/supervisor/agents/crossagentMcp";
+import {
+  resolveComputerUseMcpHttpConfigForLaunch,
+  type ComputerUseMcpHttpConfig,
+} from "@/supervisor/agents/computerUseMcp";
+import {
+  resolveChromeMcpHttpConfigForLaunch,
+  type ChromeMcpHttpConfig,
+} from "@/supervisor/agents/chromeMcp";
+import {
+  resolveAppControlsMcpHttpConfigForLaunch,
+  type AppControlsMcpHttpConfig,
+} from "@/supervisor/agents/appControlsMcp";
+import {
+  resolveKnowledgeMcpHttpConfigForLaunch,
+  type KnowledgeMcpHttpConfig,
+} from "@/supervisor/agents/knowledgeMcp";
+import {
+  type AgentAdapter,
+  type AgentLaunchOptions,
+  type CommandSpec,
+  type StructuredSessionHandle,
+  type StructuredTurnResult,
+  createKnownSessionRef,
+  defaultFormatPromptSegments,
+  injectWslEnv,
+  primeProjectShellEnv,
+  resolveAgentProjectLocation,
+  resolveLaunchSpec,
+  mergeSpawnEnv,
+} from "../../agents/base";
+import { captureSupervisorException } from "../../diagnostics/sentry";
+import { ensureNodePtySpawnHelperExecutable } from "../../nodePty";
+import type { QueuedStructuredTurn, SessionRuntime } from "../sessionTypes";
+import { effectiveProjectLocation, withLogicalProjectLocation } from "../sessionTypes";
+import type { ThreadOutputPipeline } from "../threadOutputPipeline";
+import { rewriteSegmentsForWsl } from "../threadAttachments";
+import {
+  buildProviderHandoffInstruction,
+  isResolvedThreadMentionSegment,
+  resolveThreadMentionSegments,
+} from "../threadMentionResolver";
+import { applyLaunchArgsConfigRewrite, mergeCliHookExtraArgs } from "./cliHookArgs";
+import type { CliHookSessionCoordinator } from "./cliHookPlugin";
+import { shouldPrimeNativeProjectShellEnv } from "./helpers";
+import type { ThreadSessionManagerOptions } from "./managerOptions";
+import type { PtyLifecycle } from "./ptyLifecycle";
+import type { RuntimeEventRouter } from "./runtimeEventRouter";
+import {
+  StructuredRuntimeDiagnosticError,
+  structuredRuntimeFeatureArea,
+} from "./structuredRuntimeDiagnosticError";
+import { describeSpawnFailure, sanitizeEnv, sanitizedProcessEnv } from "./spawnDiagnostics";
+import { readSupervisorSharedSettings } from "../supervisorSharedSettings";
+import type { SessionRuntimeLifecycle } from "./sessionRuntimeLifecycle";
+import { getIterm2StatusL2TerminalEnv, resolveTerminalColorEnv } from "./terminalEnv";
+
+export interface SpawnThreadInput {
+  threadId: string;
+  agentKind: AgentKind;
+  adapter: AgentAdapter;
+  /** User-visible project location before any provider execution fallback. */
+  logicalProjectLocation?: ProjectLocation;
+  projectLocation: ProjectLocation;
+  config: ThreadConfig;
+  initialSize: TerminalSize;
+  launchPrompt: string;
+  command?: CommandSpec;
+  /**
+   * Extra env injected into the agent PTY (merged on top of agentEnv +
+   * provider spawnEnv). Currently used by the CLI hook ingress to ferry
+   * `AGENTEMPLOYEE_HOOK_URL` / `AGENTEMPLOYEE_HOOK_SECRET` / `AGENTEMPLOYEE_THREAD_ID` etc.
+   */
+  extraEnv?: Record<string, string>;
+  structuredSession?: StructuredSessionHandle;
+  sessionRef?: SessionRef;
+  pendingLaunchPrompt?: string;
+  pendingTerminalPreInputs?: string[][];
+  pendingTerminalPrompt?: string;
+  pendingTerminalSegments?: PromptSegment[];
+  presentationMode?: ThreadPresentationMode;
+  initialStatus?: ThreadStatus;
+  initialAttention?: ThreadAttention;
+  suppressInitialStructuredIdle?: boolean;
+  mcpLaunchSnapshot: McpLaunchSnapshot;
+  threadMentionToolsAvailable?: boolean;
+  launchConfig?: ThreadConfig;
+  nativePlugins?: readonly AgentNativePlugin[];
+}
+
+/**
+ * Per-launch config with plugin-bundled built-in MCPs enabled and globally
+ * hard-disabled servers cleared. Together with the `resolve*ForLaunch` gates,
+ * this keeps both policies at one provider boundary. The original per-thread
+ * config stays on `SessionRuntime`; plugin contributions stay in its launch
+ * snapshot for restart and recovery.
+ */
+export function effectiveLaunchConfig(
+  config: ThreadConfig,
+  disabledBuiltInMcpServerIds: readonly BuiltInMcpServerId[],
+  pluginBuiltInMcpServerIds: readonly BuiltInMcpServerId[] = [],
+): ThreadConfig {
+  if (disabledBuiltInMcpServerIds.length === 0 && pluginBuiltInMcpServerIds.length === 0) {
+    return config;
+  }
+  const next = { ...config };
+  if (pluginBuiltInMcpServerIds.includes("browser")) next.browserMcp = true;
+  if (pluginBuiltInMcpServerIds.includes("crossagents")) next.crossagentMcp = true;
+  if (pluginBuiltInMcpServerIds.includes("computer-use")) next.computerUse = true;
+  if (pluginBuiltInMcpServerIds.includes("chrome")) next.chromeMcp = true;
+  if (disabledBuiltInMcpServerIds.includes("browser")) next.browserMcp = false;
+  if (disabledBuiltInMcpServerIds.includes("crossagents")) next.crossagentMcp = false;
+  if (disabledBuiltInMcpServerIds.includes("computer-use")) next.computerUse = false;
+  if (disabledBuiltInMcpServerIds.includes("chrome")) next.chromeMcp = false;
+  return next;
+}
+
+/**
+ * Launch config for a workspace: MCP flag gating plus Home-scope unrestricted
+ * approval/sandbox so every agent (not just ACP) can read and write anywhere
+ * when the session is the projectless Home folder.
+ */
+export function workspaceLaunchConfig(
+  location: ProjectLocation,
+  config: ThreadConfig,
+  adapter: { capabilities: UnrestrictedPermissionCapabilities },
+  disabledBuiltInMcpServerIds: readonly BuiltInMcpServerId[],
+  pluginBuiltInMcpServerIds: readonly BuiltInMcpServerId[] = [],
+  homeScopeLocation: ProjectLocation = location,
+): ThreadConfig {
+  return applyHomeScopePermissions(
+    homeScopeLocation,
+    effectiveLaunchConfig(config, disabledBuiltInMcpServerIds, pluginBuiltInMcpServerIds),
+    adapter.capabilities,
+  );
+}
+
+/**
+ * Launch config for providers that declare `mcpConfigSource: "agentSettings"`:
+ * the built-in MCP flags come from the provider's saved settings
+ * (`sharedSettings.agentSettings[kind]`) instead of the per-thread composer
+ * flags. Crossagents remains off unless the provider explicitly supports
+ * trusted routing. Pooled GUI runtimes use one provider-session credential;
+ * terminal runtimes use their existing per-thread credential.
+ */
+export function applyAgentSettingsMcpFlags(
+  config: ThreadConfig,
+  agentSettings: Record<string, boolean | string>,
+  disabledBuiltInMcpServerIds: readonly BuiltInMcpServerId[],
+  crossagentRoutingAvailable: boolean,
+): ThreadConfig {
+  return effectiveLaunchConfig(
+    {
+      ...config,
+      browserMcp: agentSettings.browserMcp === true,
+      chromeMcp: agentSettings.chromeMcp === true,
+      computerUse: agentSettings.computerUse === true,
+      crossagentMcp: crossagentRoutingAvailable && agentSettings.crossagentMcp === true,
+    },
+    disabledBuiltInMcpServerIds,
+  );
+}
+
+export function usesProviderSessionCrossagentRouting(
+  adapter:
+    | {
+        capabilities: {
+          presentationMode: ThreadPresentationMode;
+          crossagentMcpRouting?: AgentAdapter["capabilities"]["crossagentMcpRouting"];
+        };
+      }
+    | undefined,
+  presentationMode: ThreadPresentationMode | undefined,
+  crossagentThreadId: string | undefined,
+): boolean {
+  return (
+    adapter?.capabilities.crossagentMcpRouting === "provider-session" &&
+    (presentationMode ?? adapter.capabilities.presentationMode) !== "terminal" &&
+    crossagentThreadId !== undefined
+  );
+}
+
+export function composeResolvedMcpServers(
+  snapshot: McpLaunchSnapshot,
+  browserMcp: BrowserMcpHttpConfig | undefined,
+  crossagentMcp: CrossagentMcpHttpConfig | undefined,
+  computerUseMcp: ComputerUseMcpHttpConfig | undefined,
+  chromeMcp: ChromeMcpHttpConfig | undefined,
+  appControlsMcp: AppControlsMcpHttpConfig | undefined,
+  knowledgeMcp: KnowledgeMcpHttpConfig | undefined,
+): ResolvedMcpServer[] {
+  const http = (
+    id: BuiltInMcpServerId,
+    config:
+      | {
+          url: string;
+          headers: Record<string, string>;
+          disabledTools?: readonly string[];
+        }
+      | undefined,
+    timeoutMs = DEFAULT_MCP_SERVER_TIMEOUT_MS,
+    approvalMode?: "approve",
+  ): ResolvedMcpServer | undefined =>
+    config
+      ? {
+          id,
+          name: BUILT_IN_MCP_SERVER_NAMES[id],
+          timeoutMs,
+          transport: { type: "http", url: config.url, headers: config.headers },
+          ...(config.disabledTools && config.disabledTools.length > 0
+            ? { disabledTools: [...config.disabledTools] }
+            : {}),
+          ...(approvalMode ? { approvalMode } : {}),
+        }
+      : undefined;
+  return [
+    ...snapshot.mcpServers,
+    http("browser", browserMcp),
+    http("crossagents", crossagentMcp, 300_000, "approve"),
+    http("computer-use", computerUseMcp),
+    http("chrome", chromeMcp),
+    http("app-controls", appControlsMcp),
+    http("knowledge", knowledgeMcp),
+  ].filter((server): server is ResolvedMcpServer => server !== undefined);
+}
+
+function hasThreadMentionTools(servers: readonly ResolvedMcpServer[]): boolean {
+  const appControls = servers.find((server) => server.id === "app-controls");
+  return appControls !== undefined && !appControls.disabledTools?.includes("read_thread");
+}
+
+/**
+ * Everything the spawn pipeline borrows from the manager. The pipeline owns
+ * process creation (structured-session bring-up, argv assembly, PTY spawn,
+ * runtime construction); the injected lifecycle owns registration and event
+ * bindings, while the manager keeps terminal I/O, teardown, and ref recovery.
+ */
+export interface SpawnPipelineContext {
+  options: ThreadSessionManagerOptions;
+  sessions: Map<string, SessionRuntime>;
+  pendingStartInterrupts: Set<string>;
+  pendingStartAborts: Set<string>;
+  ptyLifecycle: PtyLifecycle;
+  outputPipeline: ThreadOutputPipeline;
+  runtimeEventRouter: RuntimeEventRouter;
+  sessionRuntimeLifecycle: Pick<SessionRuntimeLifecycle, "attach">;
+  cliHookPlugin: CliHookSessionCoordinator;
+  closeThread(payload: CloseThreadPayload): Promise<void>;
+  failStructuredSession(session: SessionRuntime, error: unknown): void;
+  isCurrentSession(session: SessionRuntime): boolean;
+  resolveAgentSettings(
+    adapter: AgentAdapter,
+    location?: ProjectLocation,
+  ): Record<string, boolean | string>;
+  emitOptimisticUserMessage(
+    threadId: string,
+    prompt: string,
+    segments?: PromptSegment[],
+    requestedItemId?: string,
+  ): string;
+  emitProviderHandoff(
+    threadId: string,
+    fromAgentKind: string,
+    toAgentKind: string,
+    requestedItemId?: string,
+  ): string;
+}
+
+/**
+ * Field-level merge of a workspace's digital-employee (岗位) default thread config
+ * into a thread's own config. The thread's explicit fields win; the workspace
+ * default only fills fields the thread left unset. Provider-agnostic: reads only
+ * the workspace's `defaultThreadConfig` shape, never branching on provider name.
+ * Returns the thread config unchanged when there is no default to apply.
+ */
+export function mergeWorkspaceDefaultConfig(
+  threadConfig: ThreadConfig,
+  defaultConfig: ThreadConfig | undefined,
+): ThreadConfig {
+  if (!defaultConfig) return threadConfig;
+  return { ...defaultConfig, ...threadConfig };
+}
+
+/**
+ * Resolve a thread's effective launch config by merging its workspace's (岗位)
+ * `defaultThreadConfig` when (a) a workspace id is given and (b) that workspace
+ * declares a default. Thread-explicit fields always win. Reads the shared
+ * settings fresh so a just-saved workspace profile takes effect on the next
+ * launch; a missing/unknown workspace id degrades to the thread config unchanged.
+ */
+export function resolveWorkspaceDefaultConfig(
+  workspaceId: string | undefined,
+  threadConfig: ThreadConfig,
+  settingsPath: string,
+): ThreadConfig {
+  if (!workspaceId) return threadConfig;
+  const settings = readSupervisorSharedSettings(settingsPath);
+  const workspace = settings.workspaces.find((w) => w.id === workspaceId);
+  return mergeWorkspaceDefaultConfig(threadConfig, workspace?.defaultThreadConfig);
+}
+
+export async function resolveThreadExecution(
+  adapter: AgentAdapter,
+  projectLocation: ProjectLocation,
+  config: ThreadConfig,
+): Promise<{ location: ProjectLocation; config: ThreadConfig }> {
+  const { executionEnvironment, ...baseConfig } = config;
+  const location = await resolveAgentProjectLocation(
+    adapter,
+    projectLocation,
+    executionEnvironment,
+  );
+  return {
+    location,
+    config:
+      adapter.windowsProjectExecution === "wsl" &&
+      projectLocation.kind === "windows" &&
+      location.kind === "wsl"
+        ? {
+            ...baseConfig,
+            executionEnvironment: { kind: "wsl", distro: location.distro },
+          }
+        : baseConfig,
+  };
+}
+
+/**
+ * Spawn orchestration for agent threads: initial launches, restarts of
+ * inactive-but-resumable threads, and the shared `spawnThread` runtime-session
+ * assembly they (and invalid-session-ref recovery) all funnel through.
+ * Extracted from `ThreadSessionManager`.
+ */
+export class SpawnPipeline {
+  constructor(private readonly ctx: SpawnPipelineContext) {}
+
+  async startThreadInner(
+    payload: StartThreadPayload & { threadId: string },
+  ): Promise<StartThreadResult> {
+    const ctx = this.ctx;
+    // A provider switch abandons whatever turn the old session still has open.
+    // Complete it locally — the same close-out the Stop watchdog applies when a
+    // provider never acknowledges — BEFORE teardown: teardown itself never
+    // completes items, so without this the half-streamed rows strand as
+    // forever-running output above the handoff divider, live and in SQLite.
+    if (payload.providerSwitch) {
+      ctx.sessions.get(payload.threadId)?.structuredSession?.forceCompleteTurn?.();
+      ctx.runtimeEventRouter.flush();
+    }
+    await ctx.closeThread({ threadId: payload.threadId });
+    if (ctx.pendingStartAborts.delete(payload.threadId)) {
+      ctx.pendingStartInterrupts.delete(payload.threadId);
+      return { threadId: payload.threadId };
+    }
+
+    const adapter = this.requireAdapter(payload.agentKind);
+    const resolvedConfig = resolveWorkspaceDefaultConfig(
+      payload.workspaceId,
+      payload.config,
+      this.ctx.options.settingsPath,
+    );
+    const { location: executionLocation, config: runtimeConfig } = await resolveThreadExecution(
+      adapter,
+      payload.projectLocation,
+      resolvedConfig,
+    );
+
+    const isServerControlled = adapter.capabilities.liveInputMode === "server";
+    // Per-thread mode wins over the adapter default. Chat-mode threads route
+    // input/output through the structured session even for adapters whose
+    // `liveInputMode` is "terminal".
+    const requestedPresentation = payload.presentationMode ?? adapter.capabilities.presentationMode;
+    const usesTerminalPresentation = requestedPresentation === "terminal";
+    const useStructuredFlow = isServerControlled || !usesTerminalPresentation;
+    const pluginContributions = (await ctx.options.resolvePluginLaunchContributions?.(
+      executionLocation,
+      payload.agentKind,
+    )) ?? { mcpServers: [], builtInMcpServerIds: [], nativePlugins: [] };
+    const nativePlugins = pluginContributions.nativePlugins;
+    const mentionSegments = payload.segments
+      ? resolveThreadMentionSegments(payload.segments)
+      : undefined;
+    const wslSegments = mentionSegments
+      ? await rewriteSegmentsForWsl(mentionSegments, executionLocation, {
+          preserveImageAttachments:
+            useStructuredFlow && adapter.capabilities.readsImageAttachmentsFromHost !== false,
+          preservePdfAttachments:
+            useStructuredFlow && adapter.capabilities.readsPdfAttachmentsFromHost === true,
+        })
+      : undefined;
+    // Terminal skills fallback: skill segments the CLI can't resolve natively
+    // become short path-hint text before the prompt is typed into the PTY.
+    // Structured turns keep the raw segments (they use inline injection).
+    const policySegments = wslSegments?.some((segment) => segment.kind === "skill")
+      ? ((await ctx.options.filterPluginSkillSegments?.({
+          agentKind: payload.agentKind,
+          projectLocation: executionLocation,
+          presentationMode: requestedPresentation,
+          nativePlugins,
+          segments: wslSegments,
+        })) ?? wslSegments)
+      : wslSegments;
+    let effectiveSegments =
+      !useStructuredFlow && policySegments?.some((segment) => segment.kind === "skill")
+        ? ((await ctx.options.rewriteTerminalSkillSegments?.({
+            agentKind: payload.agentKind,
+            projectLocation: executionLocation,
+            nativePlugins,
+            segments: policySegments,
+          })) ?? policySegments)
+        : policySegments;
+    const formatPrompt = (segments: PromptSegment[]): string =>
+      adapter.formatPromptSegments?.(segments) ?? defaultFormatPromptSegments(segments);
+    let initialPrompt =
+      effectiveSegments && effectiveSegments.length > 0
+        ? formatPrompt(effectiveSegments)
+        : payload.prompt.trim();
+    // Portable-skills fallback for the initial structured turn: inline SKILL.md
+    // instructions for invoked skills this provider can't load natively.
+    const inlineSkillInstructions =
+      useStructuredFlow && effectiveSegments?.some((segment) => segment.kind === "skill")
+        ? await ctx.options.buildSkillTurnInjection?.({
+            agentKind: payload.agentKind,
+            projectLocation: executionLocation,
+            nativePlugins,
+            segments: effectiveSegments,
+          })
+        : undefined;
+    const shouldQueueInitialPrompt =
+      !payload.sessionRef &&
+      isServerControlled &&
+      usesTerminalPresentation &&
+      initialPrompt.length > 0 &&
+      adapter.isReadyForInitialPrompt !== undefined;
+
+    // Optimistic user_message: for GUI threads with a fresh prompt, surface
+    // the user's typed text in the chat pane immediately — before the slow
+    // structured-session work (process spawn + ACP handshake +
+    // newSession/loadSession) runs. When the renderer has already painted an
+    // optimistic message and shipped its id with the payload, we reuse that
+    // id end-to-end so the chat pane never sees a duplicate.
+    let optimisticUserMessageItemId =
+      !payload.providerSwitch &&
+      !usesTerminalPresentation &&
+      initialPrompt.length > 0 &&
+      !payload.sessionRef
+        ? ctx.emitOptimisticUserMessage(
+            payload.threadId,
+            initialPrompt,
+            payload.segments,
+            payload.userMessageItemId,
+          )
+        : undefined;
+    const mcpLaunchSnapshotBase = {
+      disabledBuiltInMcpServerIds: payload.disabledBuiltInMcpServerIds ?? [],
+      disabledBuiltInMcpTools: payload.disabledBuiltInMcpTools ?? {},
+      pluginBuiltInMcpServerIds: pluginContributions.builtInMcpServerIds,
+    };
+    const optimisticMcpLaunchSnapshot: McpLaunchSnapshot = {
+      mcpServers: [],
+      ...mcpLaunchSnapshotBase,
+    };
+    const optimisticLaunchConfig = this.resolveMcpLaunchConfig(
+      workspaceLaunchConfig(
+        executionLocation,
+        runtimeConfig,
+        adapter,
+        optimisticMcpLaunchSnapshot.disabledBuiltInMcpServerIds,
+        optimisticMcpLaunchSnapshot.pluginBuiltInMcpServerIds,
+        payload.projectLocation,
+      ),
+      optimisticMcpLaunchSnapshot,
+      adapter,
+      payload.threadId,
+      executionLocation,
+    );
+    if (optimisticUserMessageItemId) {
+      this.emitOptimisticWorkingState(payload.threadId, runtimeConfig, optimisticLaunchConfig);
+    }
+
+    // Prime the user's interactive-shell env (fnm / nvm / asdf / mise cd-hooks
+    // applied at the project root) before any agent process — structured or
+    // PTY — is spawned. Electron-from-Finder inherits launchd's skeleton PATH,
+    // so without this the spawned CLI picks up homebrew node instead of the
+    // project-pinned version. Memoized per cwd; the later prime before the PTY
+    // launch is a no-op after this.
+    if (shouldPrimeNativeProjectShellEnv(executionLocation)) {
+      await primeProjectShellEnv(executionLocation.path);
+    }
+    await this.ctx.options.prepareSkillsForLaunch?.(executionLocation, payload.agentKind);
+
+    const mcpIdentity = {
+      threadId: payload.threadId,
+      title: initialPrompt.split("\n", 1)[0]?.trim() ?? "",
+    };
+    // Every provider translator keys its output record by `server.name`, so a
+    // plugin server sharing a name with a user-configured one would silently
+    // replace it — dropping the user's headers and tokens. The user's own
+    // servers win; the colliding plugin server is skipped.
+    const userMcpServers = payload.mcpServers ?? [];
+    const userMcpServerNames = new Set(userMcpServers.map((server) => server.name));
+    const pluginMcpServers = pluginContributions.mcpServers.filter(
+      (server) => !userMcpServerNames.has(server.name),
+    );
+    let mcpServers = resolveEnabledMcpServers([...userMcpServers, ...pluginMcpServers]);
+    if (this.ctx.options.applyMcpServerAuthorization) {
+      mcpServers = await this.ctx.options.applyMcpServerAuthorization(mcpServers);
+    }
+    if (this.ctx.options.prepareMcpToolFilters) {
+      mcpServers = await this.ctx.options.prepareMcpToolFilters(
+        mcpServers,
+        executionLocation,
+        ...(adapter.mcpRequiresStdioCwdProxy ? [{ proxyStdioCwd: true }] : []),
+      );
+    }
+    const mcpLaunchSnapshot: McpLaunchSnapshot = {
+      mcpServers,
+      ...mcpLaunchSnapshotBase,
+    };
+    const launchConfig = this.resolveMcpLaunchConfig(
+      workspaceLaunchConfig(
+        executionLocation,
+        runtimeConfig,
+        adapter,
+        mcpLaunchSnapshot.disabledBuiltInMcpServerIds,
+        mcpLaunchSnapshot.pluginBuiltInMcpServerIds,
+        payload.projectLocation,
+      ),
+      mcpLaunchSnapshot,
+      adapter,
+      payload.threadId,
+      executionLocation,
+    );
+    const resolvedMcpServers = await this.resolveMcpServersForLaunch({
+      location: executionLocation,
+      config: launchConfig,
+      mcpLaunchSnapshot,
+      identity: mcpIdentity,
+      crossagentThreadId: payload.threadId,
+      adapter,
+      presentationMode: requestedPresentation,
+    });
+    const threadMentionToolsAvailable = hasThreadMentionTools(resolvedMcpServers);
+    // A fork handoff reads its source thread through the mention in its own
+    // prompt (see `buildForkMentionLaunchInput`), so its whole context rides on
+    // `read_thread` resolving. When it does not, no mention is readable, so
+    // degrade the way a "thread-transcript" switch does — drop them all, start
+    // anyway, and say so — rather than failing a launch the user did not
+    // hand-write. Launches without the marker (a mention the user typed
+    // themselves) still fail loudly below.
+    const handoffMentionUnresolved =
+      payload.mentionHandoff === true &&
+      !threadMentionToolsAvailable &&
+      payload.segments?.some((segment) => segment.kind === "thread") === true;
+    if (handoffMentionUnresolved) {
+      effectiveSegments = effectiveSegments?.filter(
+        (segment) => !isResolvedThreadMentionSegment(segment),
+      );
+      initialPrompt =
+        effectiveSegments && effectiveSegments.length > 0
+          ? formatPrompt(effectiveSegments)
+          : payload.prompt.trim();
+    }
+    // A "thread-transcript" switch (chat → chat) keeps the thread id and the
+    // whole transcript, so the incoming provider reads the prior conversation
+    // straight from the app database instead of being handed a summary. Every
+    // other handoff already carries its context in the prompt and must not get
+    // the instruction on top of it.
+    const handsOverTranscript = payload.providerSwitch?.contextStrategy === "thread-transcript";
+    const handoffInstruction =
+      handsOverTranscript && payload.providerSwitch && threadMentionToolsAvailable
+        ? buildProviderHandoffInstruction(payload.threadId, payload.providerSwitch.fromAgentKind)
+        : undefined;
+    // The client skipped extraction because it expected this session to resolve
+    // `read_thread`, and it did not. Nothing here can rebuild the context (the
+    // previous provider's session is already closed), so the thread says so
+    // instead of leaving the user with a provider that silently lost the
+    // conversation. Emitted below, after the handoff divider and the user's
+    // message, so it reads as a note on the new provider's first turn.
+    const transcriptHandoffLost = handsOverTranscript && !threadMentionToolsAvailable;
+    const inlineInstructions =
+      inlineSkillInstructions && handoffInstruction
+        ? `${handoffInstruction}\n\n${inlineSkillInstructions}`
+        : (handoffInstruction ?? inlineSkillInstructions);
+    if (
+      payload.segments?.some((segment) => segment.kind === "thread") &&
+      !threadMentionToolsAvailable &&
+      payload.mentionHandoff !== true
+    ) {
+      throw new Error(
+        "Thread mentions require the AgentEmployee read_thread tool, but it is unavailable for this session.",
+      );
+    }
+    const structuredSession = await this.createStructuredSession(
+      adapter,
+      payload.threadId,
+      payload.agentKind,
+      executionLocation,
+      launchConfig,
+      resolvedMcpServers,
+      mcpIdentity,
+      payload.sessionRef,
+      requestedPresentation,
+    );
+    if (await this.abortPendingStart(payload.threadId, structuredSession)) {
+      return { threadId: payload.threadId };
+    }
+
+    if (structuredSession?.activate) {
+      try {
+        await structuredSession.activate();
+      } catch (error) {
+        await structuredSession.dispose();
+        if (ctx.pendingStartInterrupts.delete(payload.threadId)) {
+          return { threadId: payload.threadId };
+        }
+        throw error;
+      }
+    }
+    if (await this.abortPendingStart(payload.threadId, structuredSession)) {
+      return { threadId: payload.threadId };
+    }
+
+    let openedStructuredThreadId: string | undefined;
+    if (structuredSession?.openThread) {
+      try {
+        openedStructuredThreadId = await structuredSession.openThread(
+          launchConfig,
+          payload.sessionRef,
+        );
+      } catch (error) {
+        await structuredSession.dispose();
+        if (ctx.pendingStartInterrupts.delete(payload.threadId)) {
+          return { threadId: payload.threadId };
+        }
+        throw error;
+      }
+    }
+    if (await this.abortPendingStart(payload.threadId, structuredSession)) {
+      return { threadId: payload.threadId };
+    }
+
+    if (!usesTerminalPresentation) {
+      if (!structuredSession) {
+        throw new Error(
+          `Agent ${payload.agentKind} does not support ${requestedPresentation} presentation.`,
+        );
+      }
+      if (payload.providerSwitch) {
+        ctx.emitProviderHandoff(
+          payload.threadId,
+          payload.providerSwitch.fromAgentKind,
+          payload.agentKind,
+          payload.providerSwitch.handoffItemId,
+        );
+        if (initialPrompt.length > 0) {
+          optimisticUserMessageItemId = ctx.emitOptimisticUserMessage(
+            payload.threadId,
+            initialPrompt,
+            payload.segments,
+            payload.userMessageItemId,
+          );
+          this.emitOptimisticWorkingState(payload.threadId, runtimeConfig, optimisticLaunchConfig);
+        }
+      }
+      if (transcriptHandoffLost || handoffMentionUnresolved) {
+        ctx.runtimeEventRouter.append(payload.threadId, {
+          type: "warning",
+          threadId: payload.threadId,
+          message: handoffMentionUnresolved
+            ? msg("supervisor.forkTranscriptUnavailable", { agent: adapter.label })
+            : msg("supervisor.handoffTranscriptUnavailable", { agent: adapter.label }),
+        });
+      }
+      const resolvedSessionRef =
+        payload.sessionRef ??
+        (openedStructuredThreadId ? createKnownSessionRef(openedStructuredThreadId) : undefined);
+      const startInterrupted = ctx.pendingStartInterrupts.delete(payload.threadId);
+      const session = this.spawnThread({
+        threadId: payload.threadId,
+        adapter,
+        agentKind: payload.agentKind,
+        ...(executionLocation !== payload.projectLocation
+          ? { logicalProjectLocation: payload.projectLocation }
+          : {}),
+        projectLocation: executionLocation,
+        config: runtimeConfig,
+        initialSize: payload.initialSize,
+        launchPrompt: "",
+        structuredSession,
+        ...(resolvedSessionRef ? { sessionRef: resolvedSessionRef } : {}),
+        presentationMode: requestedPresentation,
+        initialStatus: optimisticUserMessageItemId && !startInterrupted ? "working" : "idle",
+        initialAttention: optimisticUserMessageItemId && !startInterrupted ? "working" : "none",
+        suppressInitialStructuredIdle:
+          optimisticUserMessageItemId !== undefined && !startInterrupted,
+        mcpLaunchSnapshot,
+        threadMentionToolsAvailable,
+        launchConfig,
+        nativePlugins,
+      });
+      if (
+        !startInterrupted &&
+        !payload.sessionRef &&
+        initialPrompt.length > 0 &&
+        structuredSession.startTurn
+      ) {
+        const startOptions = {
+          ...(optimisticUserMessageItemId
+            ? { userMessageItemId: optimisticUserMessageItemId }
+            : {}),
+          ...(inlineInstructions ? { inlineInstructions } : {}),
+        };
+        void structuredSession
+          .startTurn(
+            initialPrompt,
+            launchConfig,
+            effectiveSegments,
+            Object.keys(startOptions).length > 0 ? startOptions : undefined,
+          )
+          .catch((error) => {
+            if (ctx.sessions.get(session.threadId)?.instanceId !== session.instanceId) {
+              return;
+            }
+            ctx.failStructuredSession(session, error);
+          });
+      }
+      return { threadId: payload.threadId };
+    }
+
+    if (
+      !payload.sessionRef &&
+      useStructuredFlow &&
+      initialPrompt.length > 0 &&
+      !shouldQueueInitialPrompt &&
+      structuredSession?.startTurn
+    ) {
+      void structuredSession
+        .startTurn(
+          initialPrompt,
+          launchConfig,
+          effectiveSegments,
+          inlineInstructions ? { inlineInstructions } : undefined,
+        )
+        .catch((error) => {
+          console.error("[supervisor] initial turn failed:", error);
+          const activeSession = ctx.sessions.get(payload.threadId);
+          if (!activeSession) {
+            return;
+          }
+          ctx.failStructuredSession(activeSession, error);
+        });
+    }
+
+    if (shouldQueueInitialPrompt) {
+      await structuredSession?.ensureResumeArtifacts?.();
+    }
+
+    const deferToTerminal = adapter.shouldDeferPromptToTerminal?.(runtimeConfig) ?? false;
+    // Use `initialPrompt` (the adapter-formatted version with `~/` shortening
+    // and WSL path rewriting) so attachments hand off cleanly as the launch
+    // arg instead of being staged for a deferred PTY-write.
+    const launchPrompt = useStructuredFlow || deferToTerminal ? "" : initialPrompt;
+    const launchOptionsWithMcp = this.composeLaunchOptions(
+      adapter,
+      structuredSession?.launchOptions,
+      resolvedMcpServers,
+      executionLocation,
+    );
+    const argv = payload.sessionRef
+      ? adapter.buildResumeArgv(
+          executionLocation,
+          launchConfig,
+          launchPrompt,
+          payload.sessionRef,
+          launchOptionsWithMcp,
+        )
+      : adapter.buildLaunchArgv(
+          executionLocation,
+          launchConfig,
+          launchPrompt,
+          payload.sessionRef,
+          launchOptionsWithMcp,
+        );
+
+    // Append CLI hook plugin args (e.g. GdsAgent `--settings <path>`); env vars
+    // (`AGENTEMPLOYEE_HOOK_URL`, `AGENTEMPLOYEE_HOOK_SECRET`, `AGENTEMPLOYEE_THREAD_ID`,
+    // `AGENTEMPLOYEE_AGENT_KIND`, `AGENTEMPLOYEE_HOOK_PROTOCOL_VERSION`) flow through
+    // `spawnThread` → `agentEnv` so they end up in the PTY env on every
+    // platform (WSL, win32, posix). Failure to resolve plugin extras silently
+    // degrades to L2 — the supervisor must never block thread creation on
+    // the hook-plugin plumbing.
+    const cliHookExtras = await ctx.cliHookPlugin.resolveCliHookPluginExtras(
+      payload.threadId,
+      payload.agentKind,
+      executionLocation,
+      resolvedMcpServers,
+    );
+    if (cliHookExtras.extraArgs.length > 0) {
+      argv.args = mergeCliHookExtraArgs(
+        adapter,
+        argv.args,
+        cliHookExtras.extraArgs,
+        launchPrompt,
+        payload.sessionRef,
+      );
+    }
+    argv.args = await applyLaunchArgsConfigRewrite(
+      adapter,
+      argv.args,
+      runtimeConfig,
+      executionLocation,
+    );
+    if (shouldPrimeNativeProjectShellEnv(executionLocation)) {
+      await primeProjectShellEnv(executionLocation.path);
+    }
+    const command = resolveLaunchSpec(executionLocation, argv);
+
+    const keepStructuredSession = structuredSession && useStructuredFlow;
+    if (structuredSession && !keepStructuredSession) {
+      await structuredSession.dispose();
+    }
+    if (ctx.pendingStartAborts.delete(payload.threadId)) {
+      ctx.pendingStartInterrupts.delete(payload.threadId);
+      if (structuredSession && keepStructuredSession) {
+        await structuredSession.dispose();
+      }
+      command.cleanup?.();
+      return { threadId: payload.threadId };
+    }
+
+    const resolvedSessionRef = payload.sessionRef ?? command.sessionRef;
+    this.spawnThread({
+      threadId: payload.threadId,
+      adapter,
+      agentKind: payload.agentKind,
+      ...(executionLocation !== payload.projectLocation
+        ? { logicalProjectLocation: payload.projectLocation }
+        : {}),
+      projectLocation: executionLocation,
+      config: runtimeConfig,
+      initialSize: payload.initialSize,
+      launchPrompt,
+      command,
+      ...(Object.keys(cliHookExtras.env).length > 0 ? { extraEnv: cliHookExtras.env } : {}),
+      ...(keepStructuredSession ? { structuredSession } : {}),
+      ...(resolvedSessionRef ? { sessionRef: resolvedSessionRef } : {}),
+      mcpLaunchSnapshot,
+      threadMentionToolsAvailable,
+      launchConfig,
+      nativePlugins,
+      ...(shouldQueueInitialPrompt ? { pendingLaunchPrompt: initialPrompt } : {}),
+      presentationMode: requestedPresentation,
+      ...(deferToTerminal && !useStructuredFlow
+        ? (() => {
+            const preInputs = adapter.buildTerminalPreInputs?.(runtimeConfig);
+            return {
+              ...(preInputs ? { pendingTerminalPreInputs: preInputs } : {}),
+              pendingTerminalPrompt: initialPrompt,
+              ...(effectiveSegments ? { pendingTerminalSegments: effectiveSegments } : {}),
+            };
+          })()
+        : {}),
+    });
+
+    return { threadId: payload.threadId };
+  }
+
+  async restartThread(
+    session: SessionRuntime,
+    turn: QueuedStructuredTurn,
+  ): Promise<void | StructuredTurnResult> {
+    const ctx = this.ctx;
+    const { prompt, config: turnConfig } = turn;
+    if (!session.sessionRef) {
+      throw new Error("Session cannot be restarted without a known session reference.");
+    }
+    // Re-resolve the execution location so restarts honor a changed default
+    // distro or an updated executionEnvironment instead of reusing a stale
+    // cached UNC from the previous session.
+    const { location: executionLocation, config } = session.logicalProjectLocation
+      ? await resolveThreadExecution(session.adapter, session.logicalProjectLocation, turnConfig)
+      : { location: session.projectLocation, config: turnConfig };
+    session.projectLocation = executionLocation;
+    session.config = config;
+    const mcpLaunchSnapshot = session.mcpLaunchSnapshot;
+
+    const isServerControlled = session.adapter.capabilities.liveInputMode === "server";
+    const usesTerminalPresentation =
+      (session.presentationMode ?? session.adapter.capabilities.presentationMode) === "terminal";
+    const useStructuredFlow = isServerControlled || !usesTerminalPresentation;
+    session.ignoreExit = true;
+    ctx.outputPipeline.clearSessionTimers(session);
+    // Subagent maps from the prior session would otherwise leak across resume:
+    // any unsubscribed buffers, lingering child→parent entries, and overlay
+    // subscriptions from the dead session are stale once the structured
+    // session is replaced. `closeThread` already does this on full teardown.
+    ctx.runtimeEventRouter.clearAllForThread(session.threadId);
+    await session.structuredSession?.dispose();
+    if (session.structuredSession) {
+      await sleep(150);
+    }
+    ctx.ptyLifecycle.kill(session);
+    if (!ctx.isCurrentSession(session)) {
+      return;
+    }
+
+    // Prime the user's interactive-shell env before respawning. See the same
+    // call in `startThreadInner` — must run before the structured-session
+    // spawn so the child inherits the project-pinned PATH, not launchd's.
+    if (shouldPrimeNativeProjectShellEnv(session.projectLocation)) {
+      await primeProjectShellEnv(session.projectLocation.path);
+    }
+    await this.ctx.options.prepareSkillsForLaunch?.(session.projectLocation, session.agentKind);
+    if (!ctx.isCurrentSession(session)) {
+      return;
+    }
+
+    const mcpIdentity = { threadId: session.threadId };
+    const launchConfig = this.resolveMcpLaunchConfig(
+      workspaceLaunchConfig(
+        session.projectLocation,
+        config,
+        session.adapter,
+        mcpLaunchSnapshot.disabledBuiltInMcpServerIds,
+        mcpLaunchSnapshot.pluginBuiltInMcpServerIds,
+        effectiveProjectLocation(session),
+      ),
+      mcpLaunchSnapshot,
+      session.adapter,
+      session.threadId,
+      session.projectLocation,
+    );
+    const resolvedMcpServers = await this.resolveMcpServersForLaunch({
+      location: session.projectLocation,
+      config: launchConfig,
+      mcpLaunchSnapshot,
+      identity: mcpIdentity,
+      crossagentThreadId: session.threadId,
+      adapter: session.adapter,
+      ...(session.presentationMode ? { presentationMode: session.presentationMode } : {}),
+    });
+    const structuredSession = await this.createStructuredSession(
+      session.adapter,
+      session.threadId,
+      session.agentKind,
+      session.projectLocation,
+      launchConfig,
+      resolvedMcpServers,
+      mcpIdentity,
+      session.sessionRef,
+      session.presentationMode,
+    );
+    if (!ctx.isCurrentSession(session)) {
+      await structuredSession?.dispose();
+      return;
+    }
+
+    if (structuredSession?.activate) {
+      try {
+        await structuredSession.activate();
+      } catch (error) {
+        await structuredSession.dispose();
+        throw error;
+      }
+    }
+    if (!ctx.isCurrentSession(session)) {
+      await structuredSession?.dispose();
+      return;
+    }
+
+    if (structuredSession?.openThread) {
+      try {
+        await structuredSession.openThread(launchConfig, session.sessionRef);
+      } catch (error) {
+        await structuredSession.dispose();
+        throw error;
+      }
+    }
+    if (!ctx.isCurrentSession(session)) {
+      await structuredSession?.dispose();
+      return;
+    }
+
+    if (!usesTerminalPresentation) {
+      if (!structuredSession) {
+        throw new Error(`Thread ${session.threadId} cannot restart without a structured session.`);
+      }
+      const replacement = this.spawnThread({
+        threadId: session.threadId,
+        agentKind: session.agentKind,
+        adapter: session.adapter,
+        ...withLogicalProjectLocation(session),
+        projectLocation: session.projectLocation,
+        config,
+        initialSize: session.terminalSize,
+        launchPrompt: "",
+        structuredSession,
+        sessionRef: session.sessionRef,
+        mcpLaunchSnapshot,
+        threadMentionToolsAvailable: hasThreadMentionTools(resolvedMcpServers),
+        launchConfig,
+        ...(session.nativePlugins ? { nativePlugins: session.nativePlugins } : {}),
+        ...(session.presentationMode ? { presentationMode: session.presentationMode } : {}),
+      });
+      if (prompt.trim().length > 0 && structuredSession.startTurn) {
+        // Retry/recovery callers preserve the id of a user message that was
+        // already broadcast before the old session stopped. Reuse it without
+        // emitting another turn.started + item pair. A missing id means this
+        // path owns the first canonical paint and must emit it now.
+        const optimisticItemId =
+          turn.userMessageItemId ??
+          ctx.emitOptimisticUserMessage(
+            session.threadId,
+            prompt,
+            turn.displaySegments ?? turn.segments,
+          );
+        const startOptions = {
+          userMessageItemId: optimisticItemId,
+          ...(turn.inlineInstructions ? { inlineInstructions: turn.inlineInstructions } : {}),
+        };
+        try {
+          return await structuredSession.startTurn(
+            prompt,
+            launchConfig,
+            turn.segments,
+            startOptions,
+          );
+        } catch (error) {
+          // `spawnThread` has already replaced the old runtime in `sessions`.
+          // Settle a failed replacement here, where its identity is still
+          // available; the outer restart wrapper only knows the old session.
+          // A newer replacement may have won the race, so never mutate a
+          // runtime that is no longer current.
+          if (ctx.isCurrentSession(replacement)) {
+            ctx.failStructuredSession(replacement, error);
+          }
+          throw error;
+        }
+      }
+      return;
+    }
+
+    const launchPrompt = useStructuredFlow ? "" : prompt;
+    const cliHookExtras = await ctx.cliHookPlugin.resolveCliHookPluginExtras(
+      session.threadId,
+      session.agentKind,
+      session.projectLocation,
+      resolvedMcpServers,
+    );
+    if (!ctx.isCurrentSession(session)) {
+      await structuredSession?.dispose();
+      return;
+    }
+    const argv = session.adapter.buildResumeArgv(
+      session.projectLocation,
+      launchConfig,
+      launchPrompt,
+      session.sessionRef,
+      this.composeLaunchOptions(
+        session.adapter,
+        structuredSession?.launchOptions,
+        resolvedMcpServers,
+        session.projectLocation,
+      ),
+    );
+    if (cliHookExtras.extraArgs.length > 0) {
+      argv.args = mergeCliHookExtraArgs(
+        session.adapter,
+        argv.args,
+        cliHookExtras.extraArgs,
+        launchPrompt,
+        session.sessionRef,
+      );
+    }
+    argv.args = await applyLaunchArgsConfigRewrite(
+      session.adapter,
+      argv.args,
+      config,
+      session.projectLocation,
+    );
+    if (shouldPrimeNativeProjectShellEnv(session.projectLocation)) {
+      await primeProjectShellEnv(session.projectLocation.path);
+    }
+    if (!ctx.isCurrentSession(session)) {
+      await structuredSession?.dispose();
+      argv.cleanup?.();
+      return;
+    }
+    const command = resolveLaunchSpec(session.projectLocation, argv);
+
+    const keepStructuredSession = structuredSession && useStructuredFlow;
+    if (structuredSession && !keepStructuredSession) {
+      await structuredSession.dispose();
+    }
+    if (!ctx.isCurrentSession(session)) {
+      if (structuredSession && keepStructuredSession) {
+        await structuredSession.dispose();
+      }
+      command.cleanup?.();
+      return;
+    }
+
+    this.spawnThread({
+      threadId: session.threadId,
+      agentKind: session.agentKind,
+      adapter: session.adapter,
+      ...withLogicalProjectLocation(session),
+      projectLocation: session.projectLocation,
+      config,
+      initialSize: session.terminalSize,
+      launchPrompt,
+      command,
+      ...(Object.keys(cliHookExtras.env).length > 0 ? { extraEnv: cliHookExtras.env } : {}),
+      ...(keepStructuredSession ? { structuredSession } : {}),
+      sessionRef: session.sessionRef,
+      mcpLaunchSnapshot,
+      threadMentionToolsAvailable: hasThreadMentionTools(resolvedMcpServers),
+      launchConfig,
+      ...(session.nativePlugins ? { nativePlugins: session.nativePlugins } : {}),
+      ...(session.presentationMode ? { presentationMode: session.presentationMode } : {}),
+    });
+  }
+
+  spawnThread(input: SpawnThreadInput): SessionRuntime {
+    const ctx = this.ctx;
+    const mcpLaunchSnapshot =
+      input.mcpLaunchSnapshot ?? ({ mcpServers: [], disabledBuiltInMcpServerIds: [] } as const);
+    // `thread-reset` is only consumed by the terminal panel (renderer scrollback
+    // reset) and the renderer-side runtime-event/server-request slice clear.
+    // GUI threads have no terminal scrollback, and clearing the slice would
+    // wipe the optimistic user_message we may have already painted ahead of
+    // structured-session setup. Skip the reset for any GUI-presentation
+    // thread (initial launch, resume, restart all run through here).
+    const isGuiPresentation =
+      input.presentationMode !== undefined && input.presentationMode !== "terminal";
+    if (!isGuiPresentation) {
+      ctx.options.emit({ type: "thread-reset", threadId: input.threadId });
+    }
+
+    const agentEnv = this.resolveAgentProcessEnv(input.adapter, input.projectLocation);
+    const cliHookEnvInjected = Boolean(input.extraEnv?.AGENTEMPLOYEE_HOOK_URL);
+    // `baseSpawnEnv` underlies every lane; the location-specific `spawnEnv`
+    // layers on top so a provider can still override per platform.
+    const providerEnv = mergeSpawnEnv(
+      input.adapter.baseSpawnEnv,
+      input.projectLocation.kind === "wsl"
+        ? input.adapter.spawnEnv?.wsl
+        : input.adapter.spawnEnv?.native,
+    );
+    if (providerEnv) {
+      Object.assign(agentEnv, providerEnv);
+    }
+    if (input.extraEnv) {
+      Object.assign(agentEnv, input.extraEnv);
+    }
+    Object.assign(
+      agentEnv,
+      getIterm2StatusL2TerminalEnv({
+        adapter: input.adapter,
+        disableCliHookPlugin: ctx.options.readDisableCliHookPlugin(),
+        cliHookEnvInjected,
+      }),
+    );
+    const terminalEnv = resolveTerminalColorEnv(input.projectLocation);
+    const terminalAgentEnv = { ...agentEnv, ...terminalEnv };
+    const command = input.command
+      ? injectWslEnv(input.command, input.projectLocation, terminalAgentEnv)
+      : undefined;
+    let pty;
+    if (command) {
+      ensureNodePtySpawnHelperExecutable();
+      const ptyEnv = {
+        ...sanitizedProcessEnv,
+        ...(command.env ?? {}),
+        ...agentEnv,
+        ...terminalEnv,
+      };
+      try {
+        pty = spawn(command.command, command.args, {
+          name: process.platform === "win32" ? "xterm-color" : terminalEnv.TERM,
+          cols: input.initialSize.cols,
+          rows: input.initialSize.rows,
+          cwd: command.cwd ?? process.cwd(),
+          env: ptyEnv,
+        });
+      } catch (error) {
+        try {
+          command.cleanup?.();
+        } catch {
+          // Best-effort cleanup must not hide the spawn failure.
+        }
+        throw new Error(
+          describeSpawnFailure(
+            "agent",
+            {
+              command: command.command,
+              args: command.args,
+              ...(command.cwd ? { cwd: command.cwd } : {}),
+            },
+            sanitizeEnv(ptyEnv),
+            error,
+          ),
+          { cause: error },
+        );
+      }
+    }
+    const session: SessionRuntime = {
+      instanceId: randomUUID(),
+      threadId: input.threadId,
+      agentKind: input.agentKind,
+      adapter: input.adapter,
+      ...(pty ? { pty } : {}),
+      ...(pty && command?.cleanup ? { launchCleanup: command.cleanup } : {}),
+      ...withLogicalProjectLocation(input),
+      projectLocation: input.projectLocation,
+      config: input.config,
+      mcpLaunchSnapshot,
+      ...(input.threadMentionToolsAvailable !== undefined
+        ? { threadMentionToolsAvailable: input.threadMentionToolsAvailable }
+        : {}),
+      ...(input.nativePlugins ? { nativePlugins: input.nativePlugins } : {}),
+      launchConfig:
+        input.launchConfig ??
+        workspaceLaunchConfig(
+          input.projectLocation,
+          input.config,
+          input.adapter,
+          mcpLaunchSnapshot.disabledBuiltInMcpServerIds,
+          mcpLaunchSnapshot.pluginBuiltInMcpServerIds,
+          effectiveProjectLocation(input),
+        ),
+      terminalSize: input.initialSize,
+      launchPrompt: input.launchPrompt,
+      ...(input.sessionRef ? { sessionRef: input.sessionRef } : {}),
+      status: input.initialStatus ?? "launching",
+      attention: input.initialAttention ?? "none",
+      canResumeWithConfig: input.sessionRef !== undefined,
+      outputLength: 0,
+      pendingLaunchPrompt: input.pendingLaunchPrompt,
+      pendingTerminalPreInputs: input.pendingTerminalPreInputs,
+      pendingTerminalPrompt: input.pendingTerminalPrompt,
+      pendingTerminalSegments: input.pendingTerminalSegments,
+      ...(input.presentationMode ? { presentationMode: input.presentationMode } : {}),
+      ...(input.suppressInitialStructuredIdle ? { suppressInitialStructuredIdle: true } : {}),
+      prevChunk: "",
+      lastStrippedPtyChunk: "",
+      ptyOscCarry: "",
+      ...(cliHookEnvInjected ? { cliHookEnvInjected: true } : {}),
+      ...(input.structuredSession ? { structuredSession: input.structuredSession } : {}),
+    };
+
+    ctx.sessionRuntimeLifecycle.attach(session);
+
+    return session;
+  }
+
+  /** Fold provider-neutral MCP descriptors into every launch path. */
+  composeLaunchOptions(
+    adapter: AgentAdapter,
+    launchOptions: AgentLaunchOptions | undefined,
+    mcpServers: readonly ResolvedMcpServer[],
+    location?: ProjectLocation,
+  ): AgentLaunchOptions {
+    return {
+      ...(launchOptions ?? {}),
+      agentSettings: this.ctx.resolveAgentSettings(adapter, location),
+      ...(mcpServers.length > 0 ? { mcpServers } : {}),
+    };
+  }
+
+  async resolveMcpServersForLaunch({
+    location,
+    config,
+    mcpLaunchSnapshot,
+    identity,
+    crossagentThreadId,
+    adapter,
+    presentationMode,
+  }: {
+    location: ProjectLocation;
+    config: ThreadConfig;
+    mcpLaunchSnapshot: McpLaunchSnapshot;
+    identity?: McpThreadIdentity;
+    crossagentThreadId?: string;
+    adapter?: AgentAdapter;
+    presentationMode?: ThreadPresentationMode;
+  }): Promise<ResolvedMcpServer[]> {
+    const providerSessionCrossagents = usesProviderSessionCrossagentRouting(
+      adapter,
+      presentationMode,
+      crossagentThreadId,
+    );
+    if (adapter?.capabilities.mcpConfigSource === "agentSettings") {
+      // Provider-level MCP: flags come from the provider's settings page. Drop
+      // the general MCP identity; GUI provider-session routing uses its own
+      // shared credential, while terminal routing keeps the thread token.
+      config = this.resolveMcpLaunchConfig(
+        config,
+        mcpLaunchSnapshot,
+        adapter,
+        crossagentThreadId,
+        location,
+      );
+      identity = undefined;
+      if (adapter.capabilities.crossagentMcpRouting !== "provider-session") {
+        crossagentThreadId = undefined;
+      }
+    }
+    const browserMcp = await this.resolveBrowserMcpForLaunch(
+      location,
+      config,
+      mcpLaunchSnapshot,
+      identity,
+    );
+    const crossagentMcp = crossagentThreadId
+      ? await this.resolveCrossagentMcpForLaunch(
+          crossagentThreadId,
+          location,
+          config,
+          mcpLaunchSnapshot,
+          providerSessionCrossagents,
+        )
+      : undefined;
+    const computerUseMcp = this.resolveComputerUseMcpForLaunch(
+      location,
+      config,
+      mcpLaunchSnapshot,
+      identity,
+    );
+    const chromeMcp = this.resolveChromeMcpForLaunch(location, config, mcpLaunchSnapshot, identity);
+    const appControlsMcp = await this.resolveAppControlsMcpForLaunch(
+      location,
+      mcpLaunchSnapshot,
+      identity,
+    );
+    const knowledgeMcp = await this.resolveKnowledgeMcpForLaunch(
+      location,
+      config,
+      mcpLaunchSnapshot,
+      identity,
+    );
+    return composeResolvedMcpServers(
+      mcpLaunchSnapshot,
+      browserMcp,
+      crossagentMcp,
+      computerUseMcp,
+      chromeMcp,
+      appControlsMcp,
+      knowledgeMcp,
+    );
+  }
+
+  resolveMcpLaunchConfig(
+    config: ThreadConfig,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    adapter: AgentAdapter,
+    crossagentThreadId?: string,
+    location?: ProjectLocation,
+  ): ThreadConfig {
+    if (adapter.capabilities.mcpConfigSource !== "agentSettings") return config;
+    const withProviderSettings = applyAgentSettingsMcpFlags(
+      config,
+      this.ctx.resolveAgentSettings(adapter, location),
+      mcpLaunchSnapshot.disabledBuiltInMcpServerIds,
+      adapter.capabilities.crossagentMcpRouting === "provider-session" &&
+        crossagentThreadId !== undefined,
+    );
+    return effectiveLaunchConfig(
+      withProviderSettings,
+      mcpLaunchSnapshot.disabledBuiltInMcpServerIds,
+      mcpLaunchSnapshot.pluginBuiltInMcpServerIds,
+    );
+  }
+
+  async resolveBrowserMcpForLaunch(
+    location: ProjectLocation,
+    config: ThreadConfig,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    identity?: McpThreadIdentity,
+  ): Promise<BrowserMcpHttpConfig | undefined> {
+    if (mcpLaunchSnapshot.disabledBuiltInMcpServerIds.includes("browser")) return undefined;
+    const enabled = config.browserMcp === true;
+    if (!enabled) return undefined;
+    const cfg = await resolveBrowserMcpHttpConfigForLaunch(
+      location,
+      enabled,
+      this.ctx.options.wslBridge,
+      {
+        ...identity,
+        disabledTools: mcpLaunchSnapshot.disabledBuiltInMcpTools?.browser ?? [],
+      },
+    );
+    return cfg;
+  }
+
+  /**
+   * Resolve the computer-use MCP http config for a launch when the thread opted
+   * in (`config.computerUse === true`). Unlike browser MCP there is no
+   * force-disable ctx gate — computer-use scope gating happens in the renderer,
+   * so the per-thread config flag is authoritative. The resolver declines for
+   * WSL projects by design (computer-use is disabled for WSL). Parallel to
+   * `resolveBrowserMcpForLaunch`.
+   */
+  resolveComputerUseMcpForLaunch(
+    location: ProjectLocation,
+    config: ThreadConfig,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    identity?: McpThreadIdentity,
+  ): ComputerUseMcpHttpConfig | undefined {
+    const enabled = config.computerUse === true;
+    return resolveComputerUseMcpHttpConfigForLaunch(location, enabled, {
+      ...identity,
+      disabledTools: mcpLaunchSnapshot.disabledBuiltInMcpTools?.["computer-use"] ?? [],
+    });
+  }
+
+  /**
+   * Resolve the external-Chrome MCP http config for a launch when the thread
+   * opted in (`config.chromeMcp === true`). Mirrors
+   * {@link resolveComputerUseMcpForLaunch}: the per-thread config flag is
+   * authoritative (scope gating lives in the renderer) and the resolver declines
+   * for WSL projects by design.
+   */
+  resolveChromeMcpForLaunch(
+    location: ProjectLocation,
+    config: ThreadConfig,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    identity?: McpThreadIdentity,
+  ): ChromeMcpHttpConfig | undefined {
+    const enabled = config.chromeMcp === true;
+    return resolveChromeMcpHttpConfigForLaunch(location, enabled, {
+      ...identity,
+      disabledTools: mcpLaunchSnapshot.disabledBuiltInMcpTools?.chrome ?? [],
+    });
+  }
+
+  /**
+   * Resolve the knowledge-base MCP config when the thread opted into a base
+   * (`config.knowledgeBaseId`). Read-only search/read tools scoped to that base;
+   * declines for WSL projects the same way as app-controls.
+   */
+  async resolveKnowledgeMcpForLaunch(
+    location: ProjectLocation,
+    config: ThreadConfig,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    _identity?: McpThreadIdentity,
+  ): Promise<KnowledgeMcpHttpConfig | undefined> {
+    const baseId = config.knowledgeBaseId;
+    if (!baseId) return undefined;
+    if (mcpLaunchSnapshot.disabledBuiltInMcpServerIds.includes("knowledge")) {
+      console.warn("[mcp] knowledge base is disabled for this launch — no kb_* tools.");
+      return undefined;
+    }
+    const resolved = await resolveKnowledgeMcpHttpConfigForLaunch(
+      location,
+      this.ctx.options.wslHostAccess,
+      {
+        kb: baseId,
+        disabledTools: mcpLaunchSnapshot.disabledBuiltInMcpTools?.knowledge ?? [],
+      },
+    );
+    if (!resolved) {
+      console.warn(
+        "[mcp] knowledge base MCP URL/token unavailable for this launch — no kb_* tools.",
+      );
+    }
+    return resolved;
+  }
+
+  async resolveAppControlsMcpForLaunch(
+    location: ProjectLocation,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    identity?: McpThreadIdentity,
+  ): Promise<AppControlsMcpHttpConfig | undefined> {
+    if (mcpLaunchSnapshot.disabledBuiltInMcpServerIds.includes("app-controls")) {
+      console.warn(
+        "[mcp] app-controls is disabled for this launch — the agent gets no app-controls tools (diff_paths, fill_document_template, …).",
+      );
+      return undefined;
+    }
+    const config = await resolveAppControlsMcpHttpConfigForLaunch(
+      location,
+      this.ctx.options.wslHostAccess,
+      {
+        ...identity,
+        disabledTools: mcpLaunchSnapshot.disabledBuiltInMcpTools?.["app-controls"] ?? [],
+      },
+    );
+    if (!config) {
+      // Otherwise this is silent, and a skill that *requires* these tools can't
+      // tell why the agent fell back to scripts.
+      console.warn(
+        "[mcp] app-controls MCP URL/token unavailable for this launch — the agent gets no app-controls tools (diff_paths, fill_document_template, …).",
+      );
+    }
+    return config;
+  }
+
+  /**
+   * Resolve the Crossagents MCP http config for a launch when the thread opted
+   * in (`config.crossagentMcp === true`). Registers the thread with the ingress
+   * (idempotent — reuses an existing token), then rewrites the loopback URL to
+   * the WSL → host gateway IP for NAT-mode WSL projects (mirrored-mode WSL and
+   * native projects pass through unchanged). Parallel to
+   * `resolveBrowserMcpForLaunch`.
+   */
+  async resolveCrossagentMcpForLaunch(
+    threadId: string,
+    location: ProjectLocation,
+    config: ThreadConfig,
+    mcpLaunchSnapshot: McpLaunchSnapshot,
+    providerSessionRouting = false,
+  ): Promise<CrossagentMcpHttpConfig | undefined> {
+    if (config.crossagentMcp !== true) {
+      this.ctx.options.crossagentMcp?.unregister(threadId);
+      return undefined;
+    }
+    const disabledTools = mcpLaunchSnapshot.disabledBuiltInMcpTools?.crossagents ?? [];
+    const native = providerSessionRouting
+      ? this.ctx.options.crossagentMcp?.registerProviderSession(threadId, disabledTools)
+      : this.ctx.options.crossagentMcp?.register(threadId, disabledTools);
+    return resolveCrossagentMcpHttpConfigForLaunch(
+      native,
+      location,
+      this.ctx.options.wslHostAccess,
+    );
+  }
+
+  private resolveAgentProcessEnv(
+    adapter: AgentAdapter,
+    location?: ProjectLocation,
+  ): Record<string, string> {
+    const settingDefs = adapter.capabilities.settingDefs ?? [];
+    if (settingDefs.length === 0) {
+      return {};
+    }
+
+    const agentValues = this.ctx.resolveAgentSettings(adapter, location);
+    const env: Record<string, string> = {};
+    for (const definition of settingDefs) {
+      if (definition.platforms && !definition.platforms.includes(process.platform)) {
+        continue;
+      }
+      const value = agentValues[definition.key] ?? definition.default;
+      if (definition.type === "toggle") {
+        if (value) {
+          Object.assign(env, definition.env);
+        }
+      } else if (definition.type === "select") {
+        env[definition.envVar] = String(value);
+      }
+    }
+    return env;
+  }
+
+  private requireAdapter(kind: AgentKind): AgentAdapter {
+    const adapter = this.ctx.options.adapters.get(kind);
+    if (!adapter) {
+      throw new Error(`Unsupported agent adapter: ${kind}`);
+    }
+    return adapter;
+  }
+
+  private async createStructuredSession(
+    adapter: AgentAdapter,
+    threadId: string,
+    agentKind: AgentKind,
+    projectLocation: ProjectLocation,
+    config: ThreadConfig,
+    mcpServers: readonly ResolvedMcpServer[],
+    mcpIdentity: McpThreadIdentity | undefined,
+    sessionRef?: SessionRef,
+    presentationMode?: ThreadPresentationMode,
+  ): Promise<StructuredSessionHandle | undefined> {
+    if (!adapter.createStructuredSession) {
+      return undefined;
+    }
+    try {
+      return await adapter.createStructuredSession({
+        threadId,
+        projectLocation,
+        config,
+        agentSettings: this.ctx.resolveAgentSettings(adapter, projectLocation),
+        ...(adapter.baseSpawnEnv ? { baseSpawnEnv: adapter.baseSpawnEnv } : {}),
+        ...(mcpIdentity ? { mcpIdentity } : {}),
+        ...(mcpServers.length > 0 || adapter.capabilities.mcpConfigSource === "agentSettings"
+          ? { mcpServers }
+          : {}),
+        ...(sessionRef ? { sessionRef } : {}),
+        ...(presentationMode ? { presentationMode } : {}),
+      });
+    } catch (error) {
+      console.error("[supervisor] structured session creation failed:", error);
+      const diagnosticError = new StructuredRuntimeDiagnosticError("session-creation", agentKind);
+      if (presentationMode === "gui") {
+        // The startThread IPC boundary owns GUI startup failures. Throw one
+        // privacy-safe classified error instead of capturing here and then
+        // manufacturing a second "does not support GUI" failure below.
+        throw diagnosticError;
+      }
+      // Terminal presentation can safely fall back to its PTY path when the
+      // optional structured helper cannot be created, so report once here.
+      captureSupervisorException(diagnosticError, {
+        "agentemployee.feature_area": structuredRuntimeFeatureArea("session-creation"),
+        ...(presentationMode ? { "agentemployee.presentation": presentationMode } : {}),
+        "agentemployee.provider": agentKind,
+        "agentemployee.runtime_kind": "structured",
+      });
+      return undefined;
+    }
+  }
+
+  private async abortPendingStart(
+    threadId: string,
+    structuredSession: StructuredSessionHandle | undefined,
+  ): Promise<boolean> {
+    if (!this.ctx.pendingStartAborts.delete(threadId)) {
+      return false;
+    }
+    this.ctx.pendingStartInterrupts.delete(threadId);
+    await structuredSession?.dispose();
+    return true;
+  }
+
+  private emitOptimisticWorkingState(
+    threadId: string,
+    config: ThreadConfig,
+    launchConfig: ThreadConfig,
+  ): void {
+    this.ctx.options.emit({
+      type: "thread-state",
+      threadId,
+      status: "working",
+      attention: "working",
+      config,
+      launchConfig,
+      canResumeWithConfig: false,
+      threadStatusSource: "server",
+    });
+  }
+}

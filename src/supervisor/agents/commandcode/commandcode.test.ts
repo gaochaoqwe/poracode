@@ -1,0 +1,820 @@
+import { describe, expect, it, vi } from "vitest";
+import type { ProjectLocation, ThreadConfig } from "@/shared/contracts";
+import { createCommandCodeAdapter } from ".";
+import { buildCommandCodeArgs } from "./argv";
+import {
+  buildCommandCodeModelPickerCapabilities,
+  collectCommandCodeModelEfforts,
+  commandCodeDetectionSpec,
+  createCommandCodeEffortProbeCache,
+  createCommandCodeModelNameLoader,
+  defaultCommandCodeCapabilities,
+  parseCommandCodeModelEfforts,
+  parseCommandCodeModelNames,
+  parseCommandCodeModels,
+  resolveCommandCodeModelName,
+} from "./detection";
+import { authJsonHasApiKey, detectCommandCodeInvalidSessionRef } from "./session";
+import {
+  commandCodeTranscriptId,
+  isUuid,
+  sanitizeCommandCodeCwd,
+  sanitizeCommandCodeMcpCwd,
+} from "./sessionFiles";
+import { detectCommandCodeTerminalStatus } from "./terminal";
+
+describe("buildCommandCodeArgs", () => {
+  const config: ThreadConfig = { model: "gdsAgent-opus-4-8" };
+
+  it("pins default mode and always appends --yolo to unlock bypass in the picker", () => {
+    // `--yolo` is always appended as an unlock; pinning `--permission-mode
+    // default` keeps it from becoming the initial mode. Verified against the
+    // v1.4.1 bundle: initial = permissionMode || (yolo ? "bypass":"default").
+    expect(buildCommandCodeArgs(config, "hello")).toEqual([
+      "--trust",
+      "--skip-onboarding",
+      "--model",
+      "gdsAgent-opus-4-8",
+      "--permission-mode",
+      "default",
+      "--yolo",
+      "hello",
+    ]);
+  });
+
+  it("resumes a specific session with --resume <id>", () => {
+    expect(buildCommandCodeArgs(config, "next", "af75c40e-44dd-4369-a187-571745a01df2")).toEqual([
+      "--trust",
+      "--skip-onboarding",
+      "--resume",
+      "af75c40e-44dd-4369-a187-571745a01df2",
+      "--model",
+      "gdsAgent-opus-4-8",
+      "--permission-mode",
+      "default",
+      "--yolo",
+      "next",
+    ]);
+  });
+
+  it("falls back to --continue when the resume id is the empty string", () => {
+    expect(buildCommandCodeArgs(config, "next", "")).toEqual([
+      "--trust",
+      "--skip-onboarding",
+      "--continue",
+      "--model",
+      "gdsAgent-opus-4-8",
+      "--permission-mode",
+      "default",
+      "--yolo",
+      "next",
+    ]);
+  });
+
+  it("adds no resume flag for a fresh launch", () => {
+    const args = buildCommandCodeArgs(config, "next");
+    expect(args).not.toContain("--resume");
+    expect(args).not.toContain("--continue");
+  });
+
+  it("omits the prompt positional when empty", () => {
+    expect(buildCommandCodeArgs(config, "   ")).toEqual([
+      "--trust",
+      "--skip-onboarding",
+      "--model",
+      "gdsAgent-opus-4-8",
+      "--permission-mode",
+      "default",
+      "--yolo",
+    ]);
+  });
+
+  it("passes the selected model effort to v1", () => {
+    const args = buildCommandCodeArgs({ ...config, effort: "xhigh" }, "");
+    expect(args).toContain("--effort");
+    expect(args[args.indexOf("--effort") + 1]).toBe("xhigh");
+  });
+
+  it("opens directly in bypass for a yolo/never pick (omits the start mode)", () => {
+    // No `--permission-mode`, so the trailing `--yolo` selects bypass as the
+    // initial mode (the user explicitly chose Bypass Permissions).
+    for (const approvalPolicy of ["yolo", "never"] as const) {
+      const args = buildCommandCodeArgs({ ...config, approvalPolicy }, "");
+      expect(args).toContain("--yolo");
+      expect(args.join(" ")).not.toContain("--permission-mode");
+    }
+  });
+
+  it("starts in auto-accept for auto_edit, with bypass still unlocked", () => {
+    const args = buildCommandCodeArgs({ ...config, approvalPolicy: "auto_edit" }, "");
+    expect(args.join(" ")).toContain("--permission-mode auto-accept");
+    expect(args).toContain("--yolo");
+  });
+
+  it("starts in v1 dont-ask mode while keeping bypass available", () => {
+    const args = buildCommandCodeArgs({ ...config, approvalPolicy: "dont-ask" }, "");
+    expect(args.join(" ")).toContain("--permission-mode dont-ask");
+    expect(args).toContain("--yolo");
+  });
+
+  it("starts in plan mode with bypass unlocked for after planning", () => {
+    // Plan pins the start mode even when Bypass is picked; `--yolo` then just
+    // unlocks bypass in the picker for when the user leaves plan mode.
+    const args = buildCommandCodeArgs({ ...config, mode: "plan", approvalPolicy: "yolo" }, "");
+    expect(args.join(" ")).toContain("--permission-mode plan");
+    expect(args).toContain("--yolo");
+  });
+
+  it("pins plan for a plan + non-bypass pick, with bypass still unlocked", () => {
+    const args = buildCommandCodeArgs({ ...config, mode: "plan", approvalPolicy: "default" }, "");
+    expect(args.join(" ")).toContain("--permission-mode plan");
+    expect(args).toContain("--yolo");
+  });
+});
+
+describe("createCommandCodeAdapter", () => {
+  const project: ProjectLocation = { kind: "windows", path: "C:\\demo" };
+
+  it("declares the command-code binary, live-only models, and bypass default", () => {
+    const adapter = createCommandCodeAdapter();
+
+    expect(adapter.kind).toBe("commandcode");
+    expect(adapter.binary).toBe("command-code");
+    expect(adapter.capabilities.models).toEqual([]);
+    expect(adapter.capabilities.approvalPolicies.map((p) => p.id)).toEqual([
+      "default",
+      "auto_edit",
+      "dont-ask",
+      "yolo",
+    ]);
+    expect(adapter.capabilities.defaultApprovalPolicy).toBe("yolo");
+    expect(defaultCommandCodeCapabilities.presentationModes).toEqual(["terminal"]);
+    expect(adapter.defaultOneShotModel).toBeUndefined();
+    expect(adapter.allowsImplicitOneShotModel).toBe(true);
+  });
+
+  it("builds a bypass-permissions one-shot subagent command with --yolo", () => {
+    const adapter = createCommandCodeAdapter();
+    const cmd = adapter.buildSubagentOneShotCommand?.({
+      model: "gdsAgent-opus-4-8",
+      effort: "xhigh",
+      prompt: "do the work",
+      location: project,
+    });
+    expect(cmd?.command).toBe("command-code");
+    expect(cmd?.args).toContain("--trust");
+    expect(cmd?.args).toContain("--yolo");
+    expect(cmd?.args).toEqual([
+      "--trust",
+      "--skip-onboarding",
+      "--no-session",
+      "--yolo",
+      "--model",
+      "gdsAgent-opus-4-8",
+      "--effort",
+      "xhigh",
+      "-p",
+      "do the work",
+    ]);
+  });
+
+  it("exposes the update spec on the adapter so the npm latest-version probe works", () => {
+    // Regression guard: the registry card's "latest version" probe reads
+    // `adapter.update`, not the detection status. Without this field a
+    // not-installed Command Code card shows no version.
+    const adapter = createCommandCodeAdapter();
+    expect(adapter.update?.npm).toBe("command-code");
+  });
+
+  it("launches without a sessionRef so the runtime discovers the real id", () => {
+    // The synthetic ref is gone: returning no ref is what lets the runtime's
+    // discoverSessionRef path run and capture command-code's real session id.
+    const adapter = createCommandCodeAdapter();
+    const launch = adapter.buildLaunchArgv(project, { model: "gpt-5.5" }, "hi");
+
+    expect(launch.binary).toBe("command-code");
+    expect(launch.args).toEqual([
+      "--trust",
+      "--skip-onboarding",
+      "--model",
+      "gpt-5.5",
+      "--permission-mode",
+      "default",
+      "--yolo",
+      "hi",
+    ]);
+    expect(launch.sessionRef).toBeUndefined();
+    expect(adapter.discoverSessionRef).toBeTypeOf("function");
+    expect(adapter.watchSessionRef).toBeTypeOf("function");
+  });
+
+  it("resumes a discovered session id with --resume", () => {
+    const adapter = createCommandCodeAdapter();
+    const resume = adapter.buildResumeArgv(project, { model: "gpt-5.5" }, "next", {
+      providerSessionId: "af75c40e-44dd-4369-a187-571745a01df2",
+      discoveredAt: "2026-05-20T00:00:00.000Z",
+    });
+
+    expect(resume.args).toContain("--resume");
+    expect(resume.args).toContain("af75c40e-44dd-4369-a187-571745a01df2");
+    expect(resume.args).not.toContain("--continue");
+  });
+
+  it("falls back to --continue for a non-uuid (legacy/synthetic) ref", () => {
+    // A non-UUID ref can't be a real command-code session id, so resume can't
+    // target one — it uses --continue and never passes the bogus id. A stale
+    // *uuid* ref instead goes through --resume and the runtime recovers it.
+    const adapter = createCommandCodeAdapter();
+    const resume = adapter.buildResumeArgv(project, { model: "gpt-5.5" }, "next", {
+      providerSessionId: "synthetic-id",
+      discoveredAt: "2026-05-20T00:00:00.000Z",
+    });
+
+    expect(resume.args).toContain("--continue");
+    expect(resume.args).not.toContain("--resume");
+    expect(resume.args).not.toContain("synthetic-id");
+  });
+
+  it("builds a print-mode one-shot command", () => {
+    const adapter = createCommandCodeAdapter();
+    expect(adapter.buildOneShotCommand?.("gpt-5.4-mini", "high", "summarize")).toEqual({
+      command: "command-code",
+      args: [
+        "--trust",
+        "--skip-onboarding",
+        "--no-session",
+        "--model",
+        "gpt-5.4-mini",
+        "--effort",
+        "high",
+        "-p",
+        "summarize",
+      ],
+      stdin: "",
+    });
+  });
+
+  it("lets each CLI location choose its own default for an empty one-shot model", () => {
+    const adapter = createCommandCodeAdapter();
+    const command = adapter.buildOneShotCommand?.("", undefined, "summarize");
+    expect(command?.args).not.toContain("--model");
+
+    const subagent = adapter.buildSubagentOneShotCommand?.({
+      model: "",
+      prompt: "do the work",
+      location: project,
+    });
+    expect(subagent?.args).not.toContain("--model");
+  });
+});
+
+describe("detectCommandCodeTerminalStatus", () => {
+  it("treats the empty composer as idle", () => {
+    // Real idle screen: `❯ Ask your question...` placeholder + shortcuts hint.
+    const text = [
+      "────────────",
+      "❯ Ask your question...",
+      "────────────",
+      "  » permission bypass on [shift+tab]",
+      "  ? for shortcuts",
+    ].join("\n");
+    expect(detectCommandCodeTerminalStatus(text)).toEqual({
+      status: "idle",
+      attention: "none",
+      corroborated: true,
+    });
+  });
+
+  it("detects approval prompts as needs_approval", () => {
+    const result = detectCommandCodeTerminalStatus("Allow edit to src/app.ts? [y/n]");
+    expect(result?.status).toBe("needs_approval");
+    expect(result?.attention).toBe("needs_approval");
+  });
+
+  it("detects the working spinner row via the `esc to interrupt` invariant", () => {
+    // The verb label is randomized ("Cogitating"/"Processing"/"Conjuring"/…),
+    // so detection anchors on `esc to interrupt`, not the label.
+    expect(
+      detectCommandCodeTerminalStatus(" · Conjuring  esc to interrupt • 1s • ↑ 0"),
+    ).toMatchObject({
+      status: "working",
+      attention: "working",
+    });
+  });
+
+  it("returns null without recognizable indicators", () => {
+    expect(detectCommandCodeTerminalStatus("random output")).toBeNull();
+  });
+});
+
+describe("commandCodeDetectionSpec auth", () => {
+  it("declares npm + built-in update so outdated detection and fallback work", () => {
+    expect(commandCodeDetectionSpec.update).toEqual({
+      builtIn: { binary: "command-code", args: ["update"] },
+      npm: "command-code",
+    });
+    expect(commandCodeDetectionSpec.loginCommand).toBe("command-code login");
+  });
+
+  // Suppresses the CLI's background self-updater. The one-shot and terminal-login
+  // surfaces are asserted by their own tests above; this covers the detection
+  // probe + PTY-launch surfaces.
+  it("declares COMMANDCODE_SKIP_UPDATES once, for every launch lane", () => {
+    // Single declaration point; shared runtime fans it out to the version
+    // probe, login, PTY launch, one-shots, extraction, and subagents.
+    expect(commandCodeDetectionSpec.baseSpawnEnv).toEqual({ COMMANDCODE_SKIP_UPDATES: "1" });
+
+    const adapter = createCommandCodeAdapter();
+    expect(adapter.baseSpawnEnv).toBe(commandCodeDetectionSpec.baseSpawnEnv);
+    // `spawnEnv` is now only the genuinely location-specific OAuth shim.
+    expect(adapter.spawnEnv?.native).toBeUndefined();
+    expect(adapter.spawnEnv?.wsl).toEqual({ BROWSER: "/bin/true" });
+  });
+
+  it("advertises a terminal login method when installed (drives the Login button)", async () => {
+    const project: ProjectLocation = { kind: "windows", path: "C:\\demo" };
+    const result = await commandCodeDetectionSpec.capabilitiesProbe?.({
+      location: project,
+      executablePath: "C:\\bin\\command-code.cmd",
+    });
+    expect(result?.authMethods).toEqual([
+      // No `env` here: the raw probe result is pre-merge. `detectAgentInstall`
+      // applies `baseSpawnEnv` when it assembles the status (baseSpawnEnv.test.ts).
+      { id: "commandcode-terminal-login", name: "Login", type: "terminal" },
+    ]);
+  });
+
+  it("offers no auth method when the binary is not installed", async () => {
+    const project: ProjectLocation = { kind: "windows", path: "C:\\demo" };
+    const result = await commandCodeDetectionSpec.capabilitiesProbe?.({
+      location: project,
+      executablePath: undefined,
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("declares environment and credential-file auth probes", () => {
+    expect(commandCodeDetectionSpec.authProbes).toHaveLength(2);
+  });
+
+  it("treats auth.json as signed in only when it carries a non-empty apiKey", () => {
+    // present apiKey => authenticated ("Re-login" / "Signed in");
+    // absent / empty / unparseable => missing ("Login").
+    expect(authJsonHasApiKey(JSON.stringify({ apiKey: "k", userName: "x" }))).toBe(true);
+    expect(authJsonHasApiKey(JSON.stringify({ apiKey: "" }))).toBe(false);
+    expect(authJsonHasApiKey(JSON.stringify({ apiKey: " " }))).toBe(false);
+    expect(authJsonHasApiKey("{}")).toBe(false);
+    expect(authJsonHasApiKey(undefined)).toBe(false);
+    expect(authJsonHasApiKey("not json")).toBe(false);
+  });
+});
+
+// A faithful slice of real `command-code --list-models` stdout: the header, a
+// couple of vendor sections (including a namespace we don't curate: nvidia),
+// the `(default)` / `(recommended)` markers, and the trailing usage/docs footer
+// the parser must ignore.
+const LIST_MODELS_FIXTURE = `Available models  ·  30 models
+
+Open Source
+
+deepseek/deepseek-v4-pro           hybrid-attention long-context reasoning
+deepseek/deepseek-v4-flash         fast hybrid-attention reasoning (default)
+moonshotai/kimi-k2.7-code          improved long-horizon coding with vision
+nvidia/nemotron-3-ultra-550b-a55b  open reasoning model for long-horizon autonomous agents
+
+Anthropic
+
+gdsAgent-sonnet-4-6                  best combo of speed & intelligence (recommended)
+gdsAgent-fable-5                     most capable for demanding reasoning & long-horizon agents
+
+OpenAI
+
+gpt-5.5                            latest frontier model for general complex work
+
+Pass the full id, or just the short name after the last "/":
+cmd --model moonshotai/kimi-k2.5
+cmd --model kimi-k2.5
+
+Docs:  https://commandcode.ai/docs/reference/cli/models
+`;
+
+describe("parseCommandCodeModels", () => {
+  it("extracts ids + taglines and skips headers, footer and the docs line", () => {
+    const parsed = parseCommandCodeModels(LIST_MODELS_FIXTURE);
+    expect(parsed.map((m) => m.id)).toEqual([
+      "deepseek/deepseek-v4-pro",
+      "deepseek/deepseek-v4-flash",
+      "moonshotai/kimi-k2.7-code",
+      "nvidia/nemotron-3-ultra-550b-a55b",
+      "gdsAgent-sonnet-4-6",
+      "gdsAgent-fable-5",
+      "gpt-5.5",
+    ]);
+    // The `Docs:  https://…` footer has a 2-space gap like a model row, so the
+    // id guard (no colon) is what keeps it out.
+    expect(parsed.some((m) => m.id.startsWith("Docs"))).toBe(false);
+  });
+
+  it("flags the (default) model and strips the marker from its tagline", () => {
+    const parsed = parseCommandCodeModels(LIST_MODELS_FIXTURE);
+    const def = parsed.find((m) => m.isDefault);
+    expect(def?.id).toBe("deepseek/deepseek-v4-flash");
+    expect(def?.description).toBe("fast hybrid-attention reasoning");
+    expect(parsed.find((m) => m.id === "gdsAgent-sonnet-4-6")?.description).toBe(
+      "best combo of speed & intelligence",
+    );
+    expect(parsed.find((m) => m.id === "gdsAgent-sonnet-4-6")).toMatchObject({
+      providerId: "anthropic",
+      providerLabel: "Anthropic",
+    });
+  });
+
+  it("returns an empty list for unparseable output", () => {
+    expect(parseCommandCodeModels("")).toEqual([]);
+    expect(parseCommandCodeModels("totally unrelated text\nno models here")).toEqual([]);
+  });
+
+  it("keeps a dropped or wrapped id-like line from redefining the provider section", () => {
+    const parsed = parseCommandCodeModels(
+      [
+        "Anthropic",
+        "",
+        "gdsAgent-sonnet-5  smart",
+        // A row printed without its tagline gap (or a wrapped continuation
+        // starting with an id family) must be skipped, not promoted to a
+        // header that would regroup every following row.
+        "moonshotai/kimi-k2",
+        "gdsAgent-fable-5  balanced",
+      ].join("\n"),
+    );
+    expect(parsed.map((m) => m.id)).toEqual(["gdsAgent-sonnet-5", "gdsAgent-fable-5"]);
+    expect(parsed.every((m) => m.providerId === "anthropic")).toBe(true);
+    expect(parsed.some((m) => m.providerLabel?.toLowerCase().includes("kimi"))).toBe(false);
+  });
+});
+
+describe("buildCommandCodeModelPickerCapabilities", () => {
+  it("labels models, hoists the default first, and groups by sub-provider", () => {
+    const caps = buildCommandCodeModelPickerCapabilities(
+      parseCommandCodeModels(LIST_MODELS_FIXTURE),
+      {
+        "deepseek/deepseek-v4-flash": ["high", "max"],
+        "gpt-5.5": ["low", "medium", "high", "xhigh"],
+      },
+      {
+        "moonshotai/kimi-k2.7-code": "Kimi K2.7 Code",
+        "gpt-5.5": "GPT-5.5",
+      },
+    );
+
+    // Default is surfaced first so a fresh thread mirrors the CLI default.
+    expect(caps.models[0]?.id).toBe("deepseek/deepseek-v4-flash");
+
+    const byId = new Map(caps.models.map((m) => [m.id, m]));
+    // Labels derive from the live model ids; taglines remain descriptions.
+    expect(byId.get("moonshotai/kimi-k2.7-code")?.label).toBe("Kimi K2.7 Code");
+    expect(byId.get("gpt-5.5")?.label).toBe("GPT-5.5");
+    // The CLI tagline rides along as the (search/tooltip) description.
+    expect(byId.get("moonshotai/kimi-k2.7-code")?.description).toBe(
+      "improved long-horizon coding with vision",
+    );
+
+    // Grouping follows the live CLI sections, independent of id namespaces.
+    expect(caps.modelSubProvider?.["gdsAgent-fable-5"]).toBe("anthropic");
+    expect(caps.modelSubProvider?.["gpt-5.5"]).toBe("openai");
+    expect(caps.modelSubProvider?.["nvidia/nemotron-3-ultra-550b-a55b"]).toBe("open-source");
+    expect(caps.modelEfforts["deepseek/deepseek-v4-flash"]).toEqual(["high", "max"]);
+    expect(caps.modelEfforts["gpt-5.5"]).toEqual(["low", "medium", "high", "xhigh"]);
+
+    // Section labels and order come directly from the CLI output.
+    const subById = new Map((caps.subProviders ?? []).map((s) => [s.id, s.label]));
+    expect(subById.get("open-source")).toBe("Open Source");
+    expect(subById.get("anthropic")).toBe("Anthropic");
+  });
+
+  it("uses stable live BYOK ids despite repeated spaces or duplicate display names", () => {
+    const parsed = parseCommandCodeModels(`Available models  ·  2 models
+
+Available  AI (byok)
+
+audit-local/internal-id  Audit Reasoner
+
+Available  AI (byok)
+
+other-local/other-id  Other Reasoner
+`);
+    const caps = buildCommandCodeModelPickerCapabilities(
+      parsed,
+      { "audit-local/internal-id": ["low", "medium", "xhigh"] },
+      { "audit-local/internal-id": "Wrong Built-in Name" },
+    );
+    expect(caps.models).toEqual([
+      { id: "audit-local/internal-id", label: "Audit Reasoner" },
+      { id: "other-local/other-id", label: "Other Reasoner" },
+    ]);
+    expect(caps.subProviders).toEqual([
+      { id: "audit-local", label: "Available  AI" },
+      { id: "other-local", label: "Available  AI" },
+    ]);
+    expect(caps.modelSubProvider?.["audit-local/internal-id"]).toBe("audit-local");
+    expect(caps.modelSubProvider?.["other-local/other-id"]).toBe("other-local");
+    expect(caps.modelEfforts["audit-local/internal-id"]).toEqual(["low", "medium", "xhigh"]);
+  });
+});
+
+describe("dynamic Command Code effort discovery", () => {
+  it("parses live built-in display names case-insensitively", () => {
+    expect(
+      parseCommandCodeModelNames({
+        object: "list",
+        data: [
+          { id: "moonshotai/Kimi-K3", name: "Kimi K3" },
+          { id: "gpt-5.6-sol", name: "GPT-5.6 Sol" },
+          { id: "", name: "Missing" },
+          { id: "bad" },
+        ],
+      }),
+    ).toEqual({
+      "moonshotai/kimi-k3": "Kimi K3",
+      "gpt-5.6-sol": "GPT-5.6 Sol",
+    });
+    expect(parseCommandCodeModelNames({ data: "invalid" })).toEqual({});
+  });
+
+  it("resolves a unique dated canonical model id without a static alias table", () => {
+    // liveModelNames keys are lowercased by parseCommandCodeModelNames before
+    // reaching resolveCommandCodeModelName, so the fixture uses lowercase keys.
+    const names = {
+      "gdsagent-haiku-4-5-20251001": "GdsAgent Haiku 4.5",
+      "gpt-5.6-sol": "GPT-5.6 Sol",
+    };
+    expect(resolveCommandCodeModelName("gpt-5.6-sol", names)).toBe("GPT-5.6 Sol");
+    expect(resolveCommandCodeModelName("gdsAgent-haiku-4-5", names)).toBe("GdsAgent Haiku 4.5");
+    expect(
+      resolveCommandCodeModelName("gdsAgent-haiku-4-5", {
+        ...names,
+        "gdsagent-haiku-4-5-20260101": "Different Haiku",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("coalesces and briefly caches live model-name requests", async () => {
+    let now = 1_000;
+    let releaseFetch: (() => void) | undefined;
+    const fetchGate = new Promise<void>((resolve) => {
+      releaseFetch = resolve;
+    });
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      await fetchGate;
+      return new Response(JSON.stringify({ data: [{ id: "gpt-5.6-sol", name: "GPT-5.6 Sol" }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    const load = createCommandCodeModelNameLoader({ fetchImpl, now: () => now, ttlMs: 100 });
+
+    const first = load();
+    const second = load();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    releaseFetch?.();
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { "gpt-5.6-sol": "GPT-5.6 Sol" },
+      { "gpt-5.6-sol": "GPT-5.6 Sol" },
+    ]);
+
+    await load();
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    now += 101;
+    await load();
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps coalesced model-name fetches independent from each caller's cancellation", async () => {
+    let releaseFirst: (() => void) | undefined;
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const fetchImpl = vi.fn<typeof fetch>(async () => {
+      await firstGate;
+      return new Response(JSON.stringify({ data: [{ id: "gpt", name: "GPT" }] }));
+    });
+    const load = createCommandCodeModelNameLoader({ fetchImpl });
+    const ownerController = new AbortController();
+    const liveController = new AbortController();
+    const cancelledOwner = load(ownerController.signal);
+    const liveWaiter = load(liveController.signal);
+    ownerController.abort();
+    await expect(cancelledOwner).rejects.toMatchObject({ name: "AbortError" });
+    releaseFirst?.();
+    await expect(liveWaiter).resolves.toEqual({ gpt: "GPT" });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    let releaseSecond: (() => void) | undefined;
+    const secondGate = new Promise<void>((resolve) => {
+      releaseSecond = resolve;
+    });
+    const secondFetch = vi.fn<typeof fetch>(async () => {
+      await secondGate;
+      return new Response(JSON.stringify({ data: [{ id: "glm", name: "GLM" }] }));
+    });
+    const secondLoad = createCommandCodeModelNameLoader({ fetchImpl: secondFetch });
+    const cancelledWaiterController = new AbortController();
+    const liveOwner = secondLoad();
+    const cancelledWaiter = secondLoad(cancelledWaiterController.signal);
+    cancelledWaiterController.abort();
+    await expect(cancelledWaiter).rejects.toMatchObject({ name: "AbortError" });
+    releaseSecond?.();
+    await expect(liveOwner).resolves.toEqual({ glm: "GLM" });
+    expect(secondFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("parses supported efforts and models without adjustable effort", () => {
+    expect(
+      parseCommandCodeModelEfforts(
+        'Unknown effort "__agentemployee_capability_probe__". Supported: low, medium, xhigh.',
+      ),
+    ).toEqual(["low", "medium", "xhigh"]);
+    expect(parseCommandCodeModelEfforts("Kimi K3 has no adjustable reasoning effort.")).toEqual([]);
+    expect(parseCommandCodeModelEfforts("unexpected failure")).toBeUndefined();
+  });
+
+  it("collects efforts with bounded concurrency and reports unresolved probes", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const result = await collectCommandCodeModelEfforts(
+      ["reasoning-a", "plain", "reasoning-b", "failed"],
+      async (modelId) => {
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await Promise.resolve();
+        active -= 1;
+        if (modelId === "plain") return "Plain has no adjustable reasoning effort.";
+        if (modelId === "failed") return "probe failed";
+        return `Unknown effort. Supported: low, high${modelId === "reasoning-b" ? ", max" : ""}.`;
+      },
+      2,
+    );
+    expect(maxActive).toBe(2);
+    expect(result).toEqual({
+      "reasoning-a": ["low", "high"],
+      plain: [],
+      "reasoning-b": ["low", "high", "max"],
+    });
+  });
+
+  it("refuses the fan-out when neither leader probe gets a parseable rejection reply", async () => {
+    const probed: string[] = [];
+    const result = await collectCommandCodeModelEfforts(
+      ["first", "second", "third"],
+      async (modelId) => {
+        probed.push(modelId);
+        return modelId === "first" ? "signed out - run command-code login" : "";
+      },
+      24,
+    );
+    // Only the two serial leaders fire; a real `-p` turn storm is never launched.
+    expect(probed).toEqual(["first", "second"]);
+    expect(result).toEqual({});
+  });
+
+  it("keeps a persistently unparseable first model from vetoing the rest of the list", async () => {
+    const probed: string[] = [];
+    const result = await collectCommandCodeModelEfforts(
+      ["poison", "good-a", "good-b"],
+      async (modelId) => {
+        probed.push(modelId);
+        return modelId === "poison"
+          ? "endpoint rejected the request"
+          : "Unknown effort. Supported: low, high.";
+      },
+      24,
+    );
+    expect(result).toEqual({
+      "good-a": ["low", "high"],
+      "good-b": ["low", "high"],
+    });
+    expect(new Set(probed)).toEqual(new Set(["poison", "good-a", "good-b"]));
+  });
+
+  it("coalesces same-key probes and retains resolved models across cache keys", async () => {
+    const cache = createCommandCodeEffortProbeCache(2);
+    const calls = new Map<string, number>();
+    const probe = async (modelId: string) => {
+      calls.set(modelId, (calls.get(modelId) ?? 0) + 1);
+      await Promise.resolve();
+      return modelId === "flaky" ? "temporary failure" : `Unknown effort. Supported: low, high.`;
+    };
+
+    await Promise.all([
+      cache("native-v1", ["stable", "flaky"], probe),
+      cache("native-v1", ["stable", "flaky"], probe),
+    ]);
+    expect(calls).toEqual(
+      new Map([
+        ["stable", 1],
+        ["flaky", 1],
+      ]),
+    );
+
+    await cache("wsl-v1", ["stable"], probe);
+    await cache("native-v1", ["stable", "flaky"], probe);
+    expect(calls.get("stable")).toBe(2);
+    expect(calls.get("flaky")).toBe(2);
+  });
+});
+
+describe("commandCodeDetectionSpec capabilitiesProbe", () => {
+  it("returns only the terminal auth method when the binary is absent", async () => {
+    const result = await commandCodeDetectionSpec.capabilitiesProbe?.({
+      location: { kind: "posix", path: "/tmp" },
+      executablePath: undefined,
+    });
+    expect(result).toBeUndefined();
+  });
+});
+
+describe("detectCommandCodeInvalidSessionRef", () => {
+  it("detects empty-continue messages", () => {
+    expect(detectCommandCodeInvalidSessionRef("No previous conversation found")).toBe(true);
+    expect(detectCommandCodeInvalidSessionRef("Nothing to continue")).toBe(true);
+    expect(detectCommandCodeInvalidSessionRef("No conversations found to resume.")).toBe(true);
+  });
+
+  it("detects a missing --resume <id> target and a corrupt transcript", () => {
+    expect(
+      detectCommandCodeInvalidSessionRef(
+        'No session "deadbeef-0000-4000-8000-000000000000" found to resume.',
+      ),
+    ).toBe(true);
+    expect(
+      detectCommandCodeInvalidSessionRef(
+        "Session could not be loaded. 1 lines could not be parsed.",
+      ),
+    ).toBe(true);
+  });
+
+  it("ignores unrelated output", () => {
+    expect(detectCommandCodeInvalidSessionRef("Command Code ready")).toBe(false);
+  });
+});
+
+describe("commandCodeTranscriptId", () => {
+  const uuid = "af75c40e-44dd-4369-a187-571745a01df2";
+
+  it("accepts a real <uuid>.jsonl transcript", () => {
+    expect(commandCodeTranscriptId(`${uuid}.jsonl`)).toBe(uuid);
+  });
+
+  it("rejects every sidecar and audit file (the corruption guard)", () => {
+    // Passing any of these basenames to `--resume` is what yields
+    // "Session could not be loaded. N lines could not be parsed."
+    expect(commandCodeTranscriptId(`hooks-audit-${uuid}.jsonl`)).toBeUndefined();
+    expect(commandCodeTranscriptId(`hooks-audit-hooks-audit-${uuid}.jsonl`)).toBeUndefined();
+    expect(commandCodeTranscriptId(`hooks-audit-${uuid}.checkpoints.jsonl`)).toBeUndefined();
+    expect(commandCodeTranscriptId(`${uuid}.checkpoints.jsonl`)).toBeUndefined();
+    expect(commandCodeTranscriptId(`${uuid}.prompts.jsonl`)).toBeUndefined();
+    expect(commandCodeTranscriptId(`${uuid}.meta.json`)).toBeUndefined();
+    expect(commandCodeTranscriptId(`${uuid}.share.json`)).toBeUndefined();
+    expect(commandCodeTranscriptId("settings.json")).toBeUndefined();
+    expect(commandCodeTranscriptId("not-a-uuid.jsonl")).toBeUndefined();
+  });
+
+  it("validates the uuid shape", () => {
+    expect(isUuid(uuid)).toBe(true);
+    expect(isUuid("hooks-audit-" + uuid)).toBe(false);
+    expect(isUuid("synthetic-id")).toBe(false);
+  });
+});
+
+describe("sanitizeCommandCodeCwd", () => {
+  // These fixture paths don't exist on the test machine, so realpath throws and
+  // the raw path is sanitized — deterministic, and matching the verified
+  // on-disk layout produced by @sindresorhus/slugify.
+  it("maps a project cwd to command-code's projects/<dir> name", () => {
+    expect(sanitizeCommandCodeCwd("/Users/test-fixture-xyz/work/agentemployee")).toBe(
+      "users-test-fixture-xyz-work-agentemployee",
+    );
+  });
+
+  it("lowercases and collapses dots and slashes (worktree + temp paths)", () => {
+    expect(
+      sanitizeCommandCodeCwd(
+        "/Users/test-fixture-xyz/.agentemployee/worktrees/lc-bbea/lc-golden-pixel-8f39b4b5",
+      ),
+    ).toBe("users-test-fixture-xyz-agentemployee-worktrees-lc-bbea-lc-golden-pixel-8f39b4b5");
+    expect(sanitizeCommandCodeCwd("/private/var/T/cc-dbg-ca.ppww")).toBe(
+      "private-var-t-cc-dbg-ca-ppww",
+    );
+  });
+
+  it("splits camel-cased Windows path components like the v1.4.1 CLI", () => {
+    expect(sanitizeCommandCodeCwd("C:\\Users\\demo\\AppData\\Local\\CommandCode")).toBe(
+      "c-users-demo-app-data-local-command-code",
+    );
+  });
+
+  it("matches the CLI's distinct empty-slug fallbacks for sessions and MCP", () => {
+    expect(sanitizeCommandCodeCwd("")).toBe("root");
+    expect(sanitizeCommandCodeMcpCwd("")).toBe("");
+  });
+});

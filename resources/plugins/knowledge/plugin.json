@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "knowledge",
+  "version": "1.0.0",
+  "description": "Answer from the user's knowledge base with read-only search and read tools.",
+  "author": {
+    "name": "AgentEmployee",
+    "url": "https://agentemployee.com"
+  },
+  "homepage": "https://agentemployee.com",
+  "license": "Apache-2.0",
+  "keywords": ["knowledge", "search", "wiki", "research"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "Knowledge Base",
+      "category": "productivity",
+      "featured": true,
+      "examplePrompt": "Answer this from my knowledge base, citing the pages you used",
+      "coreSkill": "knowledge-search",
+      "builtInMcpServerIds": ["knowledge"],
+      "skills": {
+        "knowledge-search": {
+          "name": "Knowledge Search",
+          "description": "Find and read pages in the user's knowledge base with kb_search and kb_read."
+        }
+      }
+    }
+  }
+}

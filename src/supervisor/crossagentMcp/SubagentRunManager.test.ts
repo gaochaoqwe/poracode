@@ -1,0 +1,1721 @@
+import { tmpdir } from "node:os";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  AgentCapability,
+  ProjectLocation,
+  RuntimeEvent,
+  ThreadConfig,
+} from "@/shared/contracts";
+import type {
+  AgentAdapter,
+  CreateStructuredSessionInput,
+  StructuredSessionHandle,
+  StructuredSessionListener,
+} from "@/supervisor/agents/base";
+import {
+  MAX_CONCURRENT_CHILDREN_PER_PARENT,
+  MAX_RUNNING_OUTPUT_TAIL_CHARS,
+  SubagentRunManager,
+  SubagentSpawnError,
+} from "./SubagentRunManager";
+import { parseWaitOptions } from "./toolResult";
+import { buildUnrestrictedChildConfig, type SubagentRunHost } from "./types";
+
+const resolveAgentProjectLocation = vi.hoisted(() =>
+  vi.fn<
+    (
+      adapter: AgentAdapter,
+      location: ProjectLocation,
+      executionEnvironment?: ThreadConfig["executionEnvironment"],
+    ) => Promise<ProjectLocation>
+  >(
+    async (
+      _adapter: AgentAdapter,
+      location: ProjectLocation,
+      _executionEnvironment?: ThreadConfig["executionEnvironment"],
+    ) => location,
+  ),
+);
+
+vi.mock("@/supervisor/agents/base", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/supervisor/agents/base")>()),
+  resolveAgentProjectLocation,
+}));
+
+const PARENT = "parent";
+const PROJECT: ProjectLocation = { kind: "posix", path: "/tmp/project" };
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+class FakeHandle implements StructuredSessionHandle {
+  steerTurn?: NonNullable<StructuredSessionHandle["steerTurn"]>;
+  launchOptions = {};
+  listener: StructuredSessionListener | undefined;
+  disposed = false;
+  interrupted = false;
+  startTurns: Array<{ prompt: string; config: ThreadConfig }> = [];
+  resolvedRequests: Array<{ requestId: string | number; response: unknown }> = [];
+
+  constructor(private readonly interruptError?: string) {}
+
+  setListener(listener: StructuredSessionListener): void {
+    this.listener = listener;
+  }
+  async startTurn(prompt: string, config: ThreadConfig): Promise<void> {
+    this.startTurns.push({ prompt, config });
+  }
+  async interruptTurn(): Promise<void> {
+    this.interrupted = true;
+    if (this.interruptError) this.listener?.onError(this.interruptError);
+  }
+  async resolveServerRequest(requestId: string | number, response: unknown): Promise<void> {
+    this.resolvedRequests.push({ requestId, response });
+  }
+  async dispose(): Promise<void> {
+    this.disposed = true;
+  }
+
+  emit(event: RuntimeEvent): void {
+    this.listener?.onRuntimeEvent?.(event);
+  }
+  openRequest(requestId: string): void {
+    this.emit({
+      type: "request.opened",
+      threadId: "child",
+      requestId,
+      requestType: "tool_call_approval",
+      payload: { summary: "May I run this tool?" },
+    });
+  }
+  completeTurn(state: "completed" | "failed" | "interrupted" | "cancelled"): void {
+    this.emit({ type: "turn.completed", threadId: "child", turnId: "turn-1", state });
+  }
+  update(status: "idle" | "working"): void {
+    this.listener?.onUpdate({ status, attention: "none" });
+  }
+}
+
+interface Harness {
+  manager: SubagentRunManager;
+  handles: FakeHandle[];
+  inputs: CreateStructuredSessionInput[];
+  appended: Array<{ threadId: string; event: RuntimeEvent }>;
+  mcpTargets: string[];
+  mcpLocations: ProjectLocation[];
+  releaseCreate: () => void;
+}
+
+function makeHarness(options?: {
+  providerLabel?: string;
+  models?: Array<{ id: string; label: string }>;
+  subProviders?: Array<{ id: string; label: string }>;
+  modelSubProvider?: Record<string, string>;
+  statusCapabilities?: AgentCapability | null;
+  createFailures?: number;
+  deferCreate?: boolean;
+  interruptError?: string;
+  baseSpawnEnv?: Record<string, string>;
+  projectLocation?: ProjectLocation;
+  executionEnvironment?: ThreadConfig["executionEnvironment"];
+  windowsProjectExecution?: AgentAdapter["windowsProjectExecution"];
+}): Harness {
+  const handles: FakeHandle[] = [];
+  const inputs: CreateStructuredSessionInput[] = [];
+  const appended: Array<{ threadId: string; event: RuntimeEvent }> = [];
+  const mcpTargets: string[] = [];
+  const mcpLocations: ProjectLocation[] = [];
+  let createFailures = options?.createFailures ?? 0;
+  let releaseCreate!: () => void;
+  const createGate = new Promise<void>((resolve) => {
+    releaseCreate = resolve;
+  });
+
+  const adapter = {
+    kind: "codex",
+    label: options?.providerLabel ?? "Codex",
+    ...(options?.windowsProjectExecution
+      ? { windowsProjectExecution: options.windowsProjectExecution }
+      : {}),
+    ...(options?.baseSpawnEnv ? { baseSpawnEnv: options.baseSpawnEnv } : {}),
+    capabilities: {
+      models: options?.models ?? [{ id: "gpt-5.5", label: "GPT-5.5" }],
+      ...(options?.subProviders ? { subProviders: options.subProviders } : {}),
+      ...(options?.modelSubProvider ? { modelSubProvider: options.modelSubProvider } : {}),
+      efforts: ["low", "high"],
+      fastModels: ["gpt-5.5"],
+      approvalPolicies: [
+        { id: "on-request", label: "On Request" },
+        { id: "never", label: "Full Access" },
+      ],
+      sandboxModes: [
+        { id: "workspace-write", label: "Workspace Write" },
+        { id: "danger-full-access", label: "Full Access" },
+      ],
+      defaultApprovalPolicy: "on-request",
+      defaultSandboxMode: "workspace-write",
+      bypassPermissions: { approvalPolicy: "never", sandboxMode: "danger-full-access" },
+    },
+    createStructuredSession: async (input: CreateStructuredSessionInput) => {
+      inputs.push(input);
+      if (options?.deferCreate) await createGate;
+      if (createFailures > 0) {
+        createFailures -= 1;
+        throw new Error("session launch failed");
+      }
+      const handle = new FakeHandle(options?.interruptError);
+      handles.push(handle);
+      return handle;
+    },
+  } as unknown as AgentAdapter;
+
+  const host: SubagentRunHost = {
+    getParentContext: (threadId) =>
+      threadId === PARENT
+        ? {
+            projectLocation: options?.projectLocation ?? PROJECT,
+            config: {
+              model: "parent-model",
+              ...(options?.executionEnvironment
+                ? { executionEnvironment: options.executionEnvironment }
+                : {}),
+              approvalPolicy: "never",
+              sandboxMode: "workspace-write",
+              browserMcp: true,
+              crossagentMcp: true,
+              computerUse: true,
+              chromeMcp: true,
+            },
+          }
+        : undefined,
+    resolveParentMcpAccess: async (_threadId, _identity, targetAgentKind, projectLocation) => {
+      mcpTargets.push(targetAgentKind);
+      mcpLocations.push(projectLocation);
+      return {
+        mcpServers: ["browser", "computer_use", "chrome"].map((name) => ({
+          id: name,
+          name,
+          timeoutMs: 30_000,
+          transport: {
+            type: "http" as const,
+            url: `http://${name}/mcp`,
+            headers: { Authorization: `Bearer ${name}-token` },
+          },
+        })),
+      };
+    },
+    appendRuntimeEvent: (threadId, event) => appended.push({ threadId, event }),
+  };
+
+  const hasStatusCapabilities = options?.statusCapabilities !== undefined;
+  const statusCapabilities = options?.statusCapabilities;
+  const manager = new SubagentRunManager({
+    adapters: new Map([["codex" as never, adapter]]),
+    ...(hasStatusCapabilities ? { getStatusCapabilities: () => statusCapabilities } : {}),
+    host,
+  });
+  return { manager, handles, inputs, appended, mcpTargets, mcpLocations, releaseCreate };
+}
+
+beforeEach(() => {
+  resolveAgentProjectLocation.mockImplementation(async (_adapter, location) => location);
+});
+
+describe("SubagentRunManager", () => {
+  it("uses a provider's declared unrestricted posture", () => {
+    expect(
+      buildUnrestrictedChildConfig(
+        { model: "child" },
+        {
+          approvalPolicies: [
+            { id: "on-request", label: "On Request" },
+            { id: "never", label: "Full Access" },
+          ],
+          sandboxModes: [
+            { id: "workspace-write", label: "Workspace Write" },
+            { id: "danger-full-access", label: "Full Access" },
+          ],
+          bypassPermissions: {
+            approvalPolicy: "never",
+            sandboxMode: "danger-full-access",
+          },
+        },
+      ),
+    ).toEqual({
+      model: "child",
+      approvalPolicy: "never",
+      sandboxMode: "danger-full-access",
+    });
+  });
+
+  it("recognizes the ACP auto-approve convention when no bypass posture is declared", () => {
+    expect(
+      buildUnrestrictedChildConfig(
+        { model: "child" },
+        {
+          approvalPolicies: [
+            { id: "default", label: "Supervised" },
+            { id: "never", label: "Auto Approve" },
+          ],
+          sandboxModes: [],
+        },
+      ),
+    ).toEqual({ model: "child", approvalPolicy: "never" });
+  });
+
+  it("emits a synthetic Crossagent tool_call tile on spawn", () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "do work" });
+    const started = h.appended.find((a) => a.event.type === "item.started");
+    expect(started).toBeDefined();
+    const event = started!.event as Extract<RuntimeEvent, { type: "item.started" }>;
+    expect(event.threadId).toBe(PARENT);
+    expect(event.itemId).toBe(`sub:${runId}`);
+    expect(event.itemType).toBe("tool_call");
+    expect(event.payload).toMatchObject({
+      isCrossagent: true,
+      status: "running",
+      name: "Codex · GPT-5.5",
+    });
+  });
+
+  it("includes the selected effort and enabled Fast mode in the sub-agent name", () => {
+    const h = makeHarness();
+    h.manager.spawn(PARENT, {
+      agent: "codex",
+      name: "builder",
+      prompt: "do work",
+      effort: "high",
+      fast: true,
+    });
+    const started = h.appended.find((a) => a.event.type === "item.started");
+    const event = started?.event as Extract<RuntimeEvent, { type: "item.started" }> | undefined;
+    expect(event?.payload).toMatchObject({
+      name: "builder — Codex · GPT-5.5 · High · Fast",
+    });
+  });
+
+  it("includes the selected model's sub-provider in the sub-agent name", () => {
+    const h = makeHarness({
+      providerLabel: "OpenCode",
+      models: [{ id: "opencode-go/qwen3.8-max", label: "Qwen3.8 Max" }],
+      subProviders: [{ id: "opencode-go", label: "OpenCode Go" }],
+    });
+    h.manager.spawn(PARENT, {
+      agent: "codex",
+      prompt: "do work",
+      model: "opencode-go/qwen3.8-max",
+      effort: "high",
+    });
+    const started = h.appended.find((a) => a.event.type === "item.started");
+    const event = started?.event as Extract<RuntimeEvent, { type: "item.started" }> | undefined;
+    expect(event?.payload).toMatchObject({
+      name: "OpenCode · OpenCode Go · Qwen3.8 Max · High",
+    });
+  });
+
+  it("re-tags child events: parentItemId → tile, itemIds prefixed with runId", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.emit({
+      type: "item.started",
+      threadId: "child",
+      itemId: "abc",
+      itemType: "assistant_message",
+    });
+    const started = h.appended
+      .map((a) => a.event)
+      .filter(
+        (e): e is Extract<RuntimeEvent, { type: "item.started" }> => e.type === "item.started",
+      )
+      .find((e) => e.itemId === `${runId}:1:abc`);
+    expect(started).toBeDefined();
+    expect(started!.threadId).toBe(PARENT);
+    expect(started!.parentItemId).toBe(`sub:${runId}`);
+  });
+
+  it("updates collapsed step progress while child events are buffered", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.emit({
+      type: "item.started",
+      threadId: "child",
+      itemId: "step-1",
+      itemType: "assistant_message",
+    });
+    h.handles[0]!.emit({
+      type: "item.started",
+      threadId: "child",
+      itemId: "nested",
+      itemType: "tool_call",
+      parentItemId: "step-1",
+      payload: { name: "Read", status: "running" },
+    });
+    h.handles[0]!.emit({
+      type: "item.started",
+      threadId: "child",
+      itemId: "step-2",
+      itemType: "tool_call",
+      payload: { name: "Edit", status: "running" },
+    });
+
+    const updates = h.appended
+      .map((entry) => entry.event)
+      .filter(
+        (event): event is Extract<RuntimeEvent, { type: "item.updated" }> =>
+          event.type === "item.updated" && event.itemId === `sub:${runId}`,
+      );
+    expect(updates.map((event) => event.payload)).toEqual([
+      { progress: { stepCount: 1 } },
+      { progress: { stepCount: 2 } },
+    ]);
+  });
+
+  it("nests a child item under its own prefixed parent when it already has one", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.emit({
+      type: "item.started",
+      threadId: "child",
+      itemId: "leaf",
+      itemType: "assistant_message",
+      parentItemId: "branch",
+    });
+    const started = h.appended
+      .map((a) => a.event)
+      .filter(
+        (e): e is Extract<RuntimeEvent, { type: "item.started" }> => e.type === "item.started",
+      )
+      .find((e) => e.itemId === `${runId}:1:leaf`);
+    expect(started!.parentItemId).toBe(`${runId}:1:branch`);
+  });
+
+  it("captures assistant text from content.delta and settles completed", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "Hel",
+    });
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "lo",
+    });
+    handle.completeTurn("completed");
+
+    const result = await h.manager.waitFor(runId, 1000);
+    expect(result).toEqual({ status: "completed", output: "Hello" });
+
+    const completion = h.appended
+      .map((a) => a.event)
+      .filter(
+        (e): e is Extract<RuntimeEvent, { type: "item.completed" }> => e.type === "item.completed",
+      )
+      .find((e) => e.itemId === `sub:${runId}`);
+    expect(completion).toBeDefined();
+    expect(completion!.payload).toMatchObject({
+      status: "success",
+      isCrossagent: true,
+      result: "Hello",
+    });
+  });
+
+  it("reconciles stream snapshots in delegated output before later text", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    const base = {
+      type: "content.delta" as const,
+      threadId: "child",
+      itemId: "m1",
+      stream: "assistant_text" as const,
+    };
+    handle.emit({ ...base, delta: "partial" });
+    handle.emit({ ...base, delta: "correct", replace: true });
+    handle.emit({ ...base, delta: " tail" });
+    handle.completeTurn("completed");
+    expect(await h.manager.waitFor(runId, 1000, undefined, parseWaitOptions({}))).toMatchObject({
+      output: "correct tail",
+      status: "completed",
+    });
+  });
+
+  it("replaces an item's streamed output with its authoritative display payload", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    const original = "Draft: the wrong way";
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m1",
+      stream: "assistant_text",
+      delta: original,
+    });
+    // A GdsAgent display hook rewrites the completed message after it streamed.
+    const second = " Second message.";
+    handle.emit({
+      type: "item.updated",
+      threadId: "child",
+      itemId: "m1",
+      payload: {
+        content: [{ kind: "text", text: "Implemented feature X." }],
+        displayAuthoritative: true,
+      },
+    });
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m2",
+      stream: "assistant_text",
+      delta: second,
+    });
+    handle.completeTurn("completed");
+
+    const result = await h.manager.waitFor(runId, 1000, undefined, parseWaitOptions({}));
+    expect(result).toEqual({
+      status: "completed",
+      output: "Implemented feature X. Second message.",
+      total_output_chars: original.length + second.length,
+    });
+    expect(h.manager.getStatus(runId, undefined, parseWaitOptions({ full_output: true }))).toEqual({
+      status: "completed",
+      output: "Implemented feature X. Second message.",
+    });
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 5 })).toEqual({
+      status: "completed",
+      output: "Implemented feature X. Second message.",
+      total_output_chars: original.length + second.length,
+    });
+  });
+
+  it("drops hook-suppressed output from the settled result", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    const suppressed = "Secret scratchpad note";
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m1",
+      stream: "assistant_text",
+      delta: suppressed,
+    });
+    handle.emit({
+      type: "item.updated",
+      threadId: "child",
+      itemId: "m1",
+      payload: { content: [{ kind: "text", text: "" }], displayAuthoritative: true },
+    });
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m2",
+      stream: "assistant_text",
+      delta: "Final answer.",
+    });
+    handle.completeTurn("completed");
+
+    const result = await h.manager.waitFor(runId, 1000, undefined, parseWaitOptions({}));
+    expect(result).toEqual({
+      status: "completed",
+      output: "Final answer.",
+      total_output_chars: suppressed.length + "Final answer.".length,
+    });
+    expect(h.manager.getStatus(runId, undefined, parseWaitOptions({ full_output: true }))).toEqual({
+      status: "completed",
+      output: "Final answer.",
+    });
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 5 })).toEqual({
+      status: "completed",
+      output: "Final answer.",
+      total_output_chars: suppressed.length + "Final answer.".length,
+    });
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: suppressed.length })).toEqual({
+      status: "completed",
+      output: "Final answer.",
+      total_output_chars: suppressed.length + "Final answer.".length,
+    });
+  });
+
+  it("returns cursor-based output without consuming retries", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "first chunk. ",
+    });
+    const first = {
+      status: "running",
+      output: "first chunk. ",
+      total_output_chars: 13,
+    } as const;
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 0 })).toEqual(first);
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 0 })).toEqual(first);
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 13 })).toEqual({
+      status: "running",
+      output: "",
+      total_output_chars: 13,
+    });
+
+    handle.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "final answer",
+    });
+    handle.completeTurn("completed");
+    await expect(
+      h.manager.waitFor(runId, 1000, undefined, { afterOutputChars: 13 }),
+    ).resolves.toEqual({
+      status: "completed",
+      output: "final answer",
+      total_output_chars: 25,
+    });
+  });
+
+  it("uses an independent cursor for each run in a batch wait", async () => {
+    const h = makeHarness();
+    const firstRun = h.manager.spawn(PARENT, { agent: "codex", prompt: "one" });
+    const secondRun = h.manager.spawn(PARENT, { agent: "codex", prompt: "two" });
+    await flush();
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child-1",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "a".repeat(100),
+    });
+    h.handles[1]!.emit({
+      type: "content.delta",
+      threadId: "child-2",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "b".repeat(20),
+    });
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child-1",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "new-a",
+    });
+    h.handles[1]!.emit({
+      type: "content.delta",
+      threadId: "child-2",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "new-b",
+    });
+
+    await expect(
+      h.manager.waitForMany([firstRun.runId, secondRun.runId], 0, undefined, (runId) => ({
+        afterOutputChars: runId === firstRun.runId ? 100 : 20,
+      })),
+    ).resolves.toEqual([
+      {
+        run_id: firstRun.runId,
+        status: "running",
+        output: "new-a",
+        total_output_chars: 105,
+      },
+      {
+        run_id: secondRun.runId,
+        status: "running",
+        output: "new-b",
+        total_output_chars: 25,
+      },
+    ]);
+  });
+
+  it("tail-clips long mid-run output instead of re-delivering the whole transcript", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "x".repeat(2500),
+    });
+
+    const polled = h.manager.getStatus(runId, undefined, { afterOutputChars: 0 });
+    expect(polled.status).toBe("running");
+    expect(polled.total_output_chars).toBe(2500);
+    expect(polled.output).toContain("1500 earlier chars omitted");
+    expect(polled.output.endsWith("x".repeat(MAX_RUNNING_OUTPUT_TAIL_CHARS))).toBe(true);
+    expect(polled.output.length).toBeLessThan(2500);
+  });
+
+  it("wait-any returns when one child settles and leaves the others running", async () => {
+    const h = makeHarness();
+    const runs = h.manager.spawnMany(PARENT, [
+      { agent: "codex", prompt: "one" },
+      { agent: "codex", prompt: "two" },
+    ]);
+    await flush();
+    const waiting = h.manager.waitForMany(
+      runs.map((run) => run.runId),
+      1000,
+      PARENT,
+      undefined,
+      "any",
+    );
+    h.handles[0]!.completeTurn("completed");
+    expect((await waiting).map((run) => run.status)).toEqual(["completed", "running"]);
+    expect(h.handles[1]!.disposed).toBe(false);
+    expect(h.manager.getCapacity(PARENT)).toEqual({ running: 1, limit: 16, available_slots: 15 });
+    expect(h.manager.getCapacity("other-parent")).toEqual({
+      running: 0,
+      limit: 16,
+      available_slots: 16,
+    });
+    h.manager.cancelAllForThread(PARENT);
+    await flush();
+  });
+
+  it("wait-any times out without cancelling and handles settled or foreign IDs immediately", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    expect((await h.manager.waitForMany([runId], 0, PARENT, undefined, "any"))[0]?.status).toBe(
+      "running",
+    );
+    expect(
+      (await h.manager.waitForMany([runId], 1000, "other-parent", undefined, "any"))[0]?.status,
+    ).toBe("failed");
+    await h.manager.cancel(runId);
+    expect((await h.manager.waitForMany([runId], 1000, PARENT, undefined, "any"))[0]?.status).toBe(
+      "cancelled",
+    );
+  });
+
+  it("steers only a ready live child owned by the caller", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await expect(h.manager.steer(runId, "focus", PARENT)).rejects.toThrow(/still starting/);
+    await flush();
+    const steer = vi.fn<NonNullable<StructuredSessionHandle["steerTurn"]>>(async () => {});
+    h.handles[0]!.steerTurn = steer;
+    expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(true);
+    await expect(h.manager.steer(runId, "focus", "other-parent")).rejects.toThrow(/Unknown run_id/);
+    expect(steer).not.toHaveBeenCalled();
+    await h.manager.steer(runId, "focus", PARENT);
+    expect(steer).toHaveBeenCalledWith("focus", h.inputs[0]!.config);
+    expect(h.handles).toHaveLength(1);
+    expect(h.handles[0]!.interrupted).toBe(false);
+    steer.mockRejectedValueOnce(new Error("provider rejected steer"));
+    await expect(h.manager.steer(runId, "again", PARENT)).rejects.toThrow(/provider rejected/);
+    await h.manager.cancel(runId);
+    expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(false);
+    await expect(h.manager.steer(runId, "again", PARENT)).rejects.toThrow(/no longer running/);
+  });
+
+  it.each(["event", "accepted"])(
+    "blocks steering until the initial turn is ready via %s",
+    async (signal) => {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const start = vi.spyOn(FakeHandle.prototype, "startTurn").mockImplementationOnce(() => gate);
+      const h = makeHarness();
+      try {
+        const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+        await flush();
+        const handle = h.handles[0]!;
+        const steer = vi.fn<NonNullable<StructuredSessionHandle["steerTurn"]>>(async () => {});
+        handle.steerTurn = steer;
+        handle.update("working");
+        expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(false);
+        await expect(h.manager.steer(runId, "focus", PARENT)).rejects.toThrow(/still starting/);
+        expect(steer).not.toHaveBeenCalled();
+        if (signal === "event")
+          handle.emit({ type: "turn.started", threadId: "child", turnId: "initial" });
+        else {
+          release();
+          await flush();
+        }
+        expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(true);
+        await h.manager.steer(runId, "focus", PARENT);
+        expect(steer).toHaveBeenCalledOnce();
+      } finally {
+        release();
+        h.manager.cancelAllForThread(PARENT);
+        await flush();
+        start.mockRestore();
+      }
+    },
+  );
+
+  it.each(["event", "working"])(
+    "keeps a steer follow-up alive after completion via %s",
+    async (signal) => {
+      const h = makeHarness();
+      const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+      await flush();
+      const handle = h.handles[0]!;
+      handle.steerTurn = async () => {
+        handle.completeTurn("completed");
+        handle.update("idle");
+        expect(handle.disposed).toBe(false);
+        if (signal === "working") handle.update("working");
+        else handle.emit({ type: "turn.started", threadId: "child", turnId: "follow-up" });
+      };
+      await h.manager.steer(runId, "follow up", PARENT);
+      expect(h.manager.getStatus(runId).status).toBe("running");
+      expect(handle.disposed).toBe(false);
+      handle.completeTurn("completed");
+      expect(h.manager.getStatus(runId).status).toBe("completed");
+      await flush();
+      expect(handle.disposed).toBe(true);
+    },
+  );
+
+  it("steers a child without native steerTurn by interrupting and restarting the turn", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    expect(handle.steerTurn).toBeUndefined();
+    expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(true);
+    const prepare = vi.fn<() => Promise<void>>(async () => {});
+    (handle as StructuredSessionHandle).prepareSteerInterrupt = prepare;
+    handle.update("working");
+
+    const steering = h.manager.steer(runId, "focus", PARENT);
+    await flush();
+    expect(prepare).toHaveBeenCalledOnce();
+    expect(handle.interrupted).toBe(true);
+    expect(handle.startTurns).toHaveLength(1);
+    // The interrupted turn settles like a normal completion; the run must stay alive.
+    handle.completeTurn("interrupted");
+    handle.update("idle");
+    await steering;
+    expect(handle.startTurns).toHaveLength(2);
+    expect(handle.startTurns[1]).toEqual({ prompt: "focus", config: h.inputs[0]!.config });
+    expect(h.manager.getStatus(runId).status).toBe("running");
+    expect(handle.disposed).toBe(false);
+
+    handle.emit({ type: "turn.started", threadId: "child", turnId: "follow-up" });
+    handle.update("working");
+    handle.completeTurn("completed");
+    handle.update("idle");
+    expect(h.manager.getStatus(runId).status).toBe("completed");
+    await flush();
+    expect(handle.disposed).toBe(true);
+  });
+
+  it("fails a fallback steer when the interrupted child errors instead of settling", async () => {
+    const h = makeHarness({ interruptError: "child crashed" });
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+    await expect(h.manager.steer(runId, "focus", PARENT)).rejects.toThrow(
+      /stopped before the message/,
+    );
+    expect(handle.startTurns).toHaveLength(1);
+    expect(h.manager.getStatus(runId).status).toBe("failed");
+  });
+
+  it("times out a fallback steer when the child never acknowledges the interrupt", async () => {
+    vi.useFakeTimers();
+    try {
+      const h = makeHarness();
+      const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+      await vi.advanceTimersByTimeAsync(0);
+      const handle = h.handles[0]!;
+      const steering = h.manager.steer(runId, "focus", PARENT);
+      steering.catch(() => undefined);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await expect(steering).rejects.toThrow(/did not accept the message in time/);
+      expect(handle.startTurns).toHaveLength(1);
+      expect(h.manager.getStatus(runId).status).toBe("running");
+      expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("flushes completion after steering and keeps cancellation immediate", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.steerTurn = async () => {
+      h.handles[0]!.completeTurn("completed");
+    };
+    await h.manager.steer(runId, "focus", PARENT);
+    expect(h.manager.getStatus(runId).status).toBe("completed");
+    const next = h.manager.spawn(PARENT, { agent: "codex", prompt: "next" });
+    await flush();
+    let release!: () => void;
+    h.handles[1]!.steerTurn = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const steering = h.manager.steer(next.runId, "focus", PARENT);
+    await expect(h.manager.steer(next.runId, "concurrent", PARENT)).rejects.toThrow(
+      /still being delivered/,
+    );
+    await h.manager.cancel(next.runId);
+    release();
+    await expect(steering).rejects.toThrow(/stopped before the message/);
+    expect(h.handles[1]!.disposed).toBe(true);
+  });
+
+  it("settles a failed steer follow-up after the original turn completed", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.steerTurn = async () => {
+      h.handles[0]!.completeTurn("completed");
+      h.handles[0]!.update("idle");
+      h.handles[0]!.update("working");
+      throw new Error("follow-up failed");
+    };
+    await expect(h.manager.steer(runId, "focus", PARENT)).rejects.toThrow("follow-up failed");
+    expect(h.manager.getStatus(runId).status).toBe("failed");
+    expect(h.manager.getCapacity(PARENT).running).toBe(0);
+    await flush();
+    expect(h.handles[0]!.disposed).toBe(true);
+  });
+
+  it("does not let a failed attempt's pending steer block its fallback completion", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, {
+      agent: "codex",
+      prompt: "go",
+      retryMode: "any-failure",
+      fallbacks: [{ agent: "codex" }],
+    });
+    await flush();
+    let release!: () => void;
+    h.handles[0]!.steerTurn = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const steering = h.manager.steer(runId, "focus", PARENT);
+    h.handles[0]!.completeTurn("failed");
+    await flush();
+    h.handles[1]!.completeTurn("completed");
+    release();
+    await expect(steering).rejects.toThrow(/stopped before the message/);
+    expect(h.manager.getStatus(runId).status).toBe("completed");
+    expect(h.manager.getCapacity(PARENT).running).toBe(0);
+  });
+
+  it("does not let a stale steer clear a replacement attempt's steering state", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, {
+      agent: "codex",
+      prompt: "go",
+      retryMode: "any-failure",
+      fallbacks: [{ agent: "codex" }],
+    });
+    await flush();
+    let releaseFirst!: () => void;
+    h.handles[0]!.steerTurn = () =>
+      new Promise<void>((resolve) => {
+        releaseFirst = resolve;
+      });
+    const first = h.manager.steer(runId, "first", PARENT);
+    h.handles[0]!.completeTurn("failed");
+    await flush();
+    let releaseSecond!: () => void;
+    h.handles[1]!.steerTurn = () =>
+      new Promise<void>((resolve) => {
+        releaseSecond = resolve;
+      });
+    const second = h.manager.steer(runId, "second", PARENT);
+    h.handles[1]!.completeTurn("completed");
+    releaseFirst();
+    await expect(first).rejects.toThrow(/stopped before the message/);
+    expect(h.manager.getStatus(runId).status).toBe("running");
+    expect(h.manager.listRuns(PARENT)[0]?.can_steer).toBe(false);
+    releaseSecond();
+    await second;
+    expect(h.manager.getStatus(runId).status).toBe("completed");
+  });
+
+  it("returns the complete transcript when full_output is requested", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const transcript = "y".repeat(3000);
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: transcript,
+    });
+    // Read through the incremental path first, then ask for the full history anyway.
+    h.manager.getStatus(runId, undefined, { afterOutputChars: 0 });
+    expect(h.manager.getStatus(runId, undefined, { fullOutput: true })).toEqual({
+      status: "running",
+      output: transcript,
+    });
+  });
+
+  it("settles on an idle update after the child turn starts", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+
+    h.handles[0]!.update("idle");
+
+    await expect(h.manager.waitFor(runId, 1000)).resolves.toEqual({
+      status: "completed",
+      output: "",
+    });
+  });
+
+  it("does NOT forward child turn.completed onto the parent stream", async () => {
+    const h = makeHarness();
+    h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.completeTurn("completed");
+    const forwardedTurn = h.appended.find((a) => a.event.type === "turn.completed");
+    expect(forwardedTurn).toBeUndefined();
+  });
+
+  it("terminalizes provider-native delegated items left running when the child settles", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const handle = h.handles[0]!;
+
+    for (const itemId of ["explore-github", "explore-git", "explore-misc"]) {
+      handle.emit({
+        type: "item.started",
+        threadId: "child",
+        itemId,
+        itemType: "tool_call",
+        payload: {
+          name: `Agent (explore): ${itemId}`,
+          status: "running",
+          isSubAgent: true,
+        },
+      });
+    }
+    handle.emit({
+      type: "item.started",
+      threadId: "child",
+      itemId: "nested-command",
+      itemType: "command_execution",
+      parentItemId: "explore-github",
+      payload: { command: "gh pr list", status: "running" },
+    });
+    handle.completeTurn("completed");
+    await h.manager.waitFor(runId, 1000);
+
+    const completed = h.appended
+      .map((entry) => entry.event)
+      .filter(
+        (event): event is Extract<RuntimeEvent, { type: "item.completed" }> =>
+          event.type === "item.completed",
+      );
+    const outerIndex = completed.findIndex((event) => event.itemId === `sub:${runId}`);
+    expect(outerIndex).toBeGreaterThanOrEqual(0);
+    const nestedIndex = completed.findIndex(
+      (event) => event.itemId === `${runId}:1:nested-command`,
+    );
+    const nestedParentIndex = completed.findIndex(
+      (event) => event.itemId === `${runId}:1:explore-github`,
+    );
+    expect(nestedIndex).toBeGreaterThanOrEqual(0);
+    expect(nestedIndex).toBeLessThan(nestedParentIndex);
+
+    for (const itemId of ["explore-github", "explore-git", "explore-misc"]) {
+      const childIndex = completed.findIndex((event) => event.itemId === `${runId}:1:${itemId}`);
+      expect(childIndex).toBeGreaterThanOrEqual(0);
+      expect(childIndex).toBeLessThan(outerIndex);
+      expect(completed[childIndex]!.payload).toMatchObject({
+        status: "error",
+        isSubAgent: true,
+      });
+    }
+  });
+
+  it("run_agent-style wait returns running on timeout", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    const result = await h.manager.waitFor(runId, 5);
+    expect(result.status).toBe("running");
+  });
+
+  it("cancel interrupts and disposes the child, settling cancelled", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    await h.manager.cancel(runId);
+    expect(h.handles[0]!.interrupted).toBe(true);
+    expect(h.handles[0]!.disposed).toBe(true);
+    expect(h.manager.getStatus(runId).status).toBe("cancelled");
+  });
+
+  it("keeps explicit cancellation terminal when provider teardown reports Aborted", async () => {
+    const h = makeHarness({ interruptError: "Aborted" });
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+
+    await h.manager.cancel(runId);
+
+    expect(h.manager.getStatus(runId)).toMatchObject({ status: "cancelled", output: "" });
+    const completion = h.appended
+      .map(({ event }) => event)
+      .find(
+        (event): event is Extract<RuntimeEvent, { type: "item.completed" }> =>
+          event.type === "item.completed" && event.itemId === `sub:${runId}`,
+      );
+    expect(completion?.payload).toMatchObject({
+      status: "error",
+      crossagentStatus: "cancelled",
+    });
+    expect(completion?.payload).not.toHaveProperty("result");
+  });
+
+  it("cancelAllForThread cancels live children and evicts records", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.manager.cancelAllForThread(PARENT);
+    await flush();
+    expect(h.handles[0]!.disposed).toBe(true);
+    // Record evicted → unknown run_id.
+    expect(h.manager.getStatus(runId).output).toContain("Unknown run_id");
+  });
+
+  it("disposes a structured handle that finishes creating after cancellation", async () => {
+    const h = makeHarness({ deferCreate: true });
+    h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.manager.cancelAllForThread(PARENT);
+    h.releaseCreate();
+    await flush();
+    await flush();
+    expect(h.handles[0]?.disposed).toBe(true);
+    expect(h.handles[0]?.startTurns).toEqual([]);
+  });
+
+  it("enforces the per-parent concurrency cap", () => {
+    const h = makeHarness();
+    for (let i = 0; i < MAX_CONCURRENT_CHILDREN_PER_PARENT; i++) {
+      h.manager.spawn(PARENT, { agent: "codex", prompt: `t${i}` });
+    }
+    expect(() => h.manager.spawn(PARENT, { agent: "codex", prompt: "overflow" })).toThrow(
+      SubagentSpawnError,
+    );
+  });
+
+  it("runs sixteen children across individual and batch calls and reuses a freed slot", async () => {
+    const h = makeHarness();
+    const first = h.manager.spawn(PARENT, { agent: "codex", prompt: "first" });
+    const rest = h.manager.spawnMany(
+      PARENT,
+      Array.from({ length: 15 }, (_, index) => ({ agent: "codex", prompt: `task ${index}` })),
+    );
+    await flush();
+    expect(h.handles).toHaveLength(16);
+    expect(rest).toHaveLength(15);
+    expect(() => h.manager.spawn(PARENT, { agent: "codex", prompt: "overflow" })).toThrow(
+      /max 16, 16 already running/,
+    );
+    await h.manager.cancel(first.runId);
+    expect(() => h.manager.spawn(PARENT, { agent: "codex", prompt: "replacement" })).not.toThrow();
+    h.manager.cancelAllForThread(PARENT);
+    await flush();
+  });
+
+  it("atomically starts a validated batch in parallel", async () => {
+    const h = makeHarness({
+      models: [
+        { id: "gpt-5.5", label: "GPT-5.5" },
+        { id: "gpt-5.6", label: "GPT-5.6" },
+      ],
+    });
+    const runs = h.manager.spawnMany(PARENT, [
+      { agent: "codex", model: "gpt-5.5", prompt: "one" },
+      { agent: "codex", model: "gpt-5.6", prompt: "two" },
+    ]);
+    expect(runs).toHaveLength(2);
+    await flush();
+    expect(h.inputs.map((input) => input.config.model)).toEqual(["gpt-5.5", "gpt-5.6"]);
+    expect(h.handles).toHaveLength(2);
+  });
+
+  it("does not partially start a batch when one task is invalid", () => {
+    const h = makeHarness();
+    expect(() =>
+      h.manager.spawnMany(PARENT, [
+        { agent: "codex", prompt: "valid" },
+        { agent: "codex", model: "hidden-or-unknown", prompt: "invalid" },
+      ]),
+    ).toThrow(SubagentSpawnError);
+    expect(h.appended).toEqual([]);
+    expect(h.inputs).toEqual([]);
+  });
+
+  it("rejects a direct spawn when the provider is disabled in settings", () => {
+    const h = makeHarness({ statusCapabilities: null });
+    expect(() => h.manager.spawn(PARENT, { agent: "codex", prompt: "go" })).toThrow(
+      /disabled in settings/,
+    );
+  });
+
+  it("rejects a direct spawn of a model hidden from the filtered capability surface", () => {
+    const h = makeHarness({
+      statusCapabilities: {
+        models: [{ id: "gpt-5.6", label: "GPT-5.6" }],
+        efforts: [],
+        modelEfforts: {},
+        modes: [],
+        approvalPolicies: [],
+        sandboxModes: [],
+        supportsResume: false,
+        supportsDirectInput: true,
+      } as unknown as AgentCapability,
+    });
+    expect(() =>
+      h.manager.spawn(PARENT, {
+        agent: "codex",
+        model: "gpt-5.5",
+        prompt: "go",
+      }),
+    ).toThrow(/Unknown model/);
+  });
+
+  it("retries a startup failure with an explicitly selected fallback", async () => {
+    const h = makeHarness({
+      models: [
+        { id: "gpt-5.5", label: "GPT-5.5" },
+        { id: "gpt-5.6", label: "GPT-5.6" },
+      ],
+      createFailures: 1,
+    });
+    const { runId } = h.manager.spawn(PARENT, {
+      agent: "codex",
+      model: "gpt-5.5",
+      prompt: "go",
+      fallbacks: [{ agent: "codex", model: "gpt-5.6" }],
+    });
+    await flush();
+    await flush();
+    expect(h.inputs.map((input) => input.config.model)).toEqual(["gpt-5.5", "gpt-5.6"]);
+
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "answer",
+      stream: "assistant_text",
+      delta: "recovered",
+    });
+    h.handles[0]!.completeTurn("completed");
+    const result = await h.manager.waitFor(runId, 1000);
+    expect(result).toMatchObject({
+      status: "completed",
+      output: "recovered",
+      attempts: [
+        {
+          attempt: 1,
+          provider: "codex",
+          model: "gpt-5.5",
+          status: "failed",
+          error: "session launch failed",
+          output: "",
+        },
+        {
+          attempt: 2,
+          provider: "codex",
+          model: "gpt-5.6",
+          status: "completed",
+          output: "recovered",
+        },
+      ],
+    });
+  });
+
+  it("keeps the incremental cursor monotonic across fallback attempts", async () => {
+    const h = makeHarness({
+      models: [
+        { id: "gpt-5.5", label: "GPT-5.5" },
+        { id: "gpt-5.6", label: "GPT-5.6" },
+      ],
+    });
+    const { runId } = h.manager.spawn(PARENT, {
+      agent: "codex",
+      model: "gpt-5.5",
+      prompt: "go",
+      retryMode: "any-failure",
+      fallbacks: [{ agent: "codex", model: "gpt-5.6" }],
+    });
+    await flush();
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "first attempt",
+    });
+    const first = h.manager.getStatus(runId, undefined, { afterOutputChars: 0 });
+    expect(first.total_output_chars).toBe(13);
+    h.handles[0]!.emit({
+      type: "item.updated",
+      threadId: "child",
+      itemId: "m",
+      payload: { content: [{ kind: "text", text: "" }], displayAuthoritative: true },
+    });
+
+    h.handles[0]!.completeTurn("failed");
+    await flush();
+    await flush();
+    h.handles[1]!.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "m",
+      stream: "assistant_text",
+      delta: "retry",
+    });
+
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 13 })).toMatchObject({
+      status: "running",
+      output: "retry",
+      total_output_chars: 18,
+    });
+    expect(h.manager.getStatus(runId, undefined, { afterOutputChars: 5 })).toMatchObject({
+      status: "running",
+      output: "retry",
+      total_output_chars: 18,
+    });
+  });
+
+  it("does not retry a dispatched turn failure unless explicitly allowed", async () => {
+    const h = makeHarness({
+      models: [
+        { id: "gpt-5.5", label: "GPT-5.5" },
+        { id: "gpt-5.6", label: "GPT-5.6" },
+      ],
+    });
+    const { runId } = h.manager.spawn(PARENT, {
+      agent: "codex",
+      model: "gpt-5.5",
+      prompt: "go",
+      fallbacks: [{ agent: "codex", model: "gpt-5.6" }],
+    });
+    await flush();
+    h.handles[0]!.completeTurn("failed");
+    const result = await h.manager.waitFor(runId, 1000);
+    expect(result.status).toBe("failed");
+    expect(result.error).toEqual({
+      message: "Subagent turn failed",
+      may_have_side_effects: true,
+    });
+    expect(h.inputs).toHaveLength(1);
+  });
+
+  it("keeps background runs alive across foreground cancellation", async () => {
+    const h = makeHarness();
+    const foreground = h.manager.spawn(PARENT, { agent: "codex", prompt: "foreground" });
+    const background = h.manager.spawn(PARENT, {
+      agent: "codex",
+      prompt: "background",
+      background: true,
+    });
+    await flush();
+
+    h.manager.cancelForegroundForThread(PARENT);
+    await flush();
+    expect(h.manager.getStatus(foreground.runId).status).toBe("cancelled");
+    expect(h.manager.getStatus(background.runId).status).toBe("running");
+    expect(h.manager.listRuns(PARENT)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ run_id: background.runId, background: true, status: "running" }),
+      ]),
+    );
+  });
+
+  it("keeps a background result available for an explicit wait without injecting a message", async () => {
+    const h = makeHarness();
+    const background = h.manager.spawn(PARENT, {
+      agent: "codex",
+      name: "research",
+      prompt: "background",
+      background: true,
+    });
+    await flush();
+
+    h.handles[0]!.emit({
+      type: "content.delta",
+      threadId: "child",
+      itemId: "answer",
+      stream: "assistant_text",
+      delta: "background result",
+    });
+    h.handles[0]!.completeTurn("completed");
+
+    await expect(h.manager.waitFor(background.runId, 1000, PARENT)).resolves.toEqual({
+      status: "completed",
+      output: "background result",
+    });
+    expect(
+      h.appended.some(
+        ({ event }) => event.type === "item.started" && event.itemType === "user_message",
+      ),
+    ).toBe(false);
+  });
+
+  it("scopes status and cancellation to the owning parent thread", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    expect(h.manager.getStatus(runId, "other-parent").output).toContain("Unknown run_id");
+    await h.manager.cancel(runId, "other-parent");
+    expect(h.manager.getStatus(runId, PARENT).status).toBe("running");
+  });
+
+  it("treats an unexpected structured-session close as a failure", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.listener?.onClose();
+    await expect(h.manager.waitFor(runId, 1000)).resolves.toMatchObject({
+      status: "failed",
+      error: { message: "Subagent session closed before the turn completed" },
+    });
+  });
+
+  it("forwards the provider's baseSpawnEnv to the structured child session", async () => {
+    // The shared runtime — not the provider — supplies `baseSpawnEnv`, so every
+    // launch point that builds a `CreateStructuredSessionInput` has to pass it.
+    // Miss it here and a structured subagent spawns without the provider's
+    // updater opt-out, which on Windows pops a stray terminal window.
+    const baseSpawnEnv = { DROID_DISABLE_AUTO_UPDATE: "true" };
+    const h = makeHarness({ baseSpawnEnv });
+    h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+
+    expect(h.inputs[0]!.baseSpawnEnv).toEqual(baseSpawnEnv);
+  });
+
+  it("omits baseSpawnEnv entirely for a provider that declares none", async () => {
+    // Absent key, not `undefined` — `exactOptionalPropertyTypes`.
+    const h = makeHarness();
+    h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+
+    expect(h.inputs[0]!).not.toHaveProperty("baseSpawnEnv");
+  });
+
+  it("uses unrestricted permissions and inherits non-recursive MCPs", async () => {
+    const h = makeHarness();
+    h.manager.spawn(PARENT, {
+      agent: "codex",
+      prompt: "go",
+      effort: "high",
+      fast: true,
+    });
+    await flush();
+    const childInput = h.inputs[0]!;
+    expect(childInput.config).not.toHaveProperty("crossagentMcp");
+    expect(childInput.config).toMatchObject({
+      browserMcp: true,
+      computerUse: true,
+      chromeMcp: true,
+    });
+    expect(childInput.config.model).toBe("gpt-5.5");
+    expect(childInput.config.effort).toBe("high");
+    expect(childInput.config.fast).toBe(true);
+    expect(childInput.config.approvalPolicy).toBe("never");
+    expect(childInput.config.sandboxMode).toBe("danger-full-access");
+    expect(childInput.presentationMode).toBe("gui");
+    expect(h.mcpTargets).toEqual(["codex"]);
+    expect(childInput).not.toHaveProperty("crossagentMcp");
+    expect(childInput.mcpServers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "browser" }),
+        expect.objectContaining({ name: "computer_use" }),
+        expect.objectContaining({ name: "chrome" }),
+      ]),
+    );
+  });
+
+  it("uses the target provider's resolved WSL location for launch and MCP setup", async () => {
+    const windowsProject: ProjectLocation = { kind: "windows", path: "C:\\work\\project" };
+    const wslProject: ProjectLocation = {
+      kind: "wsl",
+      distro: "Ubuntu-24.04",
+      linuxPath: "/mnt/c/work/project",
+      uncPath: "\\\\wsl.localhost\\Ubuntu-24.04\\mnt\\c\\work\\project",
+    };
+    resolveAgentProjectLocation.mockResolvedValueOnce(wslProject);
+    const h = makeHarness({
+      projectLocation: windowsProject,
+      executionEnvironment: { kind: "wsl", distro: "Ubuntu-24.04" },
+      windowsProjectExecution: "wsl",
+    });
+
+    h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+
+    expect(resolveAgentProjectLocation).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "codex" }),
+      windowsProject,
+      { kind: "wsl", distro: "Ubuntu-24.04" },
+    );
+    expect(h.inputs[0]!.projectLocation).toEqual(wslProject);
+    expect(h.mcpLocations).toEqual([wslProject]);
+  });
+
+  it("rejects selections that are not advertised by the structured composer surface", () => {
+    const h = makeHarness();
+    expect(() =>
+      h.manager.spawn(PARENT, {
+        agent: "codex",
+        model: "gpt-5.5",
+        effort: "extreme",
+        prompt: "go",
+      }),
+    ).toThrow("Unsupported reasoning for gpt-5.5: extreme");
+    expect(() =>
+      h.manager.spawn(PARENT, {
+        agent: "codex",
+        model: "unknown",
+        prompt: "go",
+      }),
+    ).toThrow("Unknown model: unknown");
+  });
+
+  it("validates against status-pipeline capabilities, not the adapter's in-memory ones", async () => {
+    // Live adapter has no models yet (probe not finished / failed this
+    // session), but the status cache — the source the roster advertised from —
+    // does. The spawn must accept exactly what the roster offered.
+    const h = makeHarness({
+      models: [],
+      statusCapabilities: {
+        models: [{ id: "gpt-5.5", label: "GPT-5.5" }],
+        efforts: ["low", "high"],
+        modelEfforts: {},
+        modes: [],
+        approvalPolicies: [{ id: "never", label: "Full Access" }],
+        sandboxModes: [],
+        supportsResume: false,
+        supportsDirectInput: true,
+        bypassPermissions: { approvalPolicy: "never" },
+      } as unknown as AgentCapability,
+    });
+    h.manager.spawn(PARENT, { agent: "codex", model: "gpt-5.5", effort: "high", prompt: "go" });
+    await flush();
+    expect(h.inputs[0]!.config.model).toBe("gpt-5.5");
+    expect(h.inputs[0]!.config.approvalPolicy).toBe("never");
+    // A model outside the status capabilities is still rejected.
+    expect(() => h.manager.spawn(PARENT, { agent: "codex", model: "nope", prompt: "go" })).toThrow(
+      "Unknown model: nope",
+    );
+  });
+
+  it("drives a CLI-only agent as a one-shot child, streaming stdout into the tile", async () => {
+    // A one-shot adapter: no structured session, just a bypass-permissions CLI
+    // that echoes and exits 0.
+    const appended: Array<{ threadId: string; event: RuntimeEvent }> = [];
+    const adapter = {
+      kind: "commandcode",
+      label: "Command Code",
+      capabilities: {
+        models: [{ id: "cc-1", label: "CC One" }],
+        efforts: [],
+        approvalPolicies: [],
+        sandboxModes: [],
+        bypassPermissions: { approvalPolicy: "yolo" },
+      },
+      buildSubagentOneShotCommand: () => ({
+        command: process.execPath,
+        args: ["-e", "process.stdout.write('done work')"],
+        stdin: "",
+      }),
+    } as unknown as AgentAdapter;
+    // Real spawn path → use an existing cwd (buildPosixCommand sets cwd).
+    const realProject: ProjectLocation =
+      process.platform === "win32"
+        ? { kind: "windows", path: tmpdir() }
+        : { kind: "posix", path: tmpdir() };
+    const host: SubagentRunHost = {
+      getParentContext: (threadId) =>
+        threadId === PARENT ? { projectLocation: realProject, config: { model: "p" } } : undefined,
+      appendRuntimeEvent: (threadId, event) => appended.push({ threadId, event }),
+    };
+    const manager = new SubagentRunManager({
+      adapters: new Map([["commandcode" as never, adapter]]),
+      host,
+    });
+
+    const { runId } = manager.spawn(PARENT, { agent: "commandcode", prompt: "go" });
+    const result = await manager.waitFor(runId, 5000);
+    expect(result).toEqual({ status: "completed", output: "done work" });
+
+    // The streamed text opened an assistant_message nested under the tile.
+    const started = appended
+      .map((a) => a.event)
+      .find(
+        (e): e is Extract<RuntimeEvent, { type: "item.started" }> =>
+          e.type === "item.started" && e.itemType === "assistant_message",
+      );
+    expect(started?.parentItemId).toBe(`sub:${runId}`);
+
+    // The synthetic tile completed with the accumulated output as its result.
+    const tileDone = appended
+      .map((a) => a.event)
+      .find(
+        (e): e is Extract<RuntimeEvent, { type: "item.completed" }> =>
+          e.type === "item.completed" && e.itemId === `sub:${runId}`,
+      );
+    expect(tileDone?.payload).toMatchObject({ status: "success", result: "done work" });
+  });
+
+  it("throws for unknown agents and missing prompts", () => {
+    const h = makeHarness();
+    expect(() => h.manager.spawn(PARENT, { agent: "nope", prompt: "x" })).toThrow(
+      SubagentSpawnError,
+    );
+    expect(() => h.manager.spawn(PARENT, { agent: "codex", prompt: "  " })).toThrow(
+      SubagentSpawnError,
+    );
+  });
+
+  it("falls back to the adapter default model when none is given", async () => {
+    const h = makeHarness();
+    h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    expect(h.inputs[0]!.config.model).toBe("gpt-5.5");
+  });
+
+  it("forwards a child request.opened, namespacing the requestId under the run", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.openRequest("perm-1");
+
+    const opened = h.appended
+      .map((a) => a.event)
+      .find(
+        (e): e is Extract<RuntimeEvent, { type: "request.opened" }> => e.type === "request.opened",
+      );
+    expect(opened).toBeDefined();
+    expect(opened!.threadId).toBe(PARENT);
+    expect(opened!.requestId).toBe(`${runId}::perm-1`);
+    expect(opened!.requestType).toBe("tool_call_approval");
+  });
+
+  it("routes a namespaced resolution back to the child handle and strips the prefix", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.openRequest("perm-1");
+
+    const handled = h.manager.resolveChildServerRequest(`${runId}::perm-1`, { optionId: "allow" });
+    expect(handled).toBe(true);
+    expect(h.handles[0]!.resolvedRequests).toEqual([
+      { requestId: "perm-1", response: { optionId: "allow" } },
+    ]);
+  });
+
+  it("round-trips a request id that itself contains the delimiter", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.openRequest("weird::id");
+
+    const handled = h.manager.resolveChildServerRequest(`${runId}::weird::id`, { optionId: "ok" });
+    expect(handled).toBe(true);
+    expect(h.handles[0]!.resolvedRequests[0]!.requestId).toBe("weird::id");
+  });
+
+  it("returns false for non-subagent request ids (unknown run / no delimiter / number)", () => {
+    const h = makeHarness();
+    expect(h.manager.resolveChildServerRequest("plain-request-id", {})).toBe(false);
+    expect(h.manager.resolveChildServerRequest("deadbeef::perm", {})).toBe(false);
+    expect(h.manager.resolveChildServerRequest(42, {})).toBe(false);
+  });
+
+  it("emits a synthetic request.resolved for an unresolved forwarded request on settle", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.openRequest("perm-1");
+    h.handles[0]!.completeTurn("completed");
+    await h.manager.waitFor(runId, 1000);
+
+    const resolved = h.appended
+      .map((a) => a.event)
+      .filter(
+        (e): e is Extract<RuntimeEvent, { type: "request.resolved" }> =>
+          e.type === "request.resolved",
+      )
+      .find((e) => e.requestId === `${runId}::perm-1`);
+    expect(resolved).toBeDefined();
+    expect(resolved!.threadId).toBe(PARENT);
+    expect(resolved!.outcome).toBe("cancelled");
+  });
+
+  it("clears a forwarded request on cancel and drops its resolution afterward", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.openRequest("perm-1");
+    await h.manager.cancel(runId);
+
+    const resolved = h.appended
+      .map((a) => a.event)
+      .find(
+        (e): e is Extract<RuntimeEvent, { type: "request.resolved" }> =>
+          e.type === "request.resolved" && e.requestId === `${runId}::perm-1`,
+      );
+    expect(resolved).toBeDefined();
+    // The run record still exists, so the id is recognized, but its pending set
+    // was cleared on settle — the resolve is a no-op on the (already torn-down) handle.
+    expect(h.manager.resolveChildServerRequest(`${runId}::perm-1`, {})).toBe(true);
+    expect(h.handles[0]!.resolvedRequests).toEqual([]);
+  });
+
+  it("does not re-forward a child request.resolved after it was already resolved", async () => {
+    const h = makeHarness();
+    const { runId } = h.manager.spawn(PARENT, { agent: "codex", prompt: "go" });
+    await flush();
+    h.handles[0]!.openRequest("perm-1");
+    h.handles[0]!.emit({
+      type: "request.resolved",
+      threadId: "child",
+      requestId: "perm-1",
+      outcome: "accepted",
+    });
+
+    const resolvedEvents = h.appended
+      .map((a) => a.event)
+      .filter(
+        (e): e is Extract<RuntimeEvent, { type: "request.resolved" }> =>
+          e.type === "request.resolved" && e.requestId === `${runId}::perm-1`,
+      );
+    expect(resolvedEvents).toHaveLength(1);
+    expect(resolvedEvents[0]!.outcome).toBe("accepted");
+  });
+});

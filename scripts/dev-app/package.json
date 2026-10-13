@@ -1,0 +1,5 @@
+{
+  "name": "agentemployee-dev",
+  "main": "../../dist/main/main.cjs",
+  "packageManager": "pnpm@12.3.4"
+}

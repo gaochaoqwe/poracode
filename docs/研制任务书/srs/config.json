@@ -1,0 +1,73 @@
+{
+  "project": {
+    "name": {
+      "type": "original_text",
+      "replacement_pattern": "外部型号+产品名称（示例：SAMPLE-智能终端）",
+      "content": "LDFZ-RJ-雷达仿真系统软件"
+    },
+    "short_name": {
+      "type": "original_text",
+      "replacement_pattern": "项目简称（示例：SAMPLE）",
+      "content": "LDFZ-RJ"
+    },
+    "version": {
+      "type": "original_text",
+      "replacement_pattern": "版本号（示例：V1.0）",
+      "content": "V1.0"
+    },
+    "company": {
+      "type": "original_text",
+      "replacement_pattern": "开发单位名称（示例：XXXXXXXX公司）",
+      "content": "XXXXXXXX公司"
+    },
+    "department": {
+      "type": "original_text",
+      "replacement_pattern": "部门名称（示例：软件研发部）",
+      "content": "XXXX（待确认）"
+    }
+  },
+  "document": {
+    "id": {
+      "type": "original_text",
+      "replacement_pattern": "文档编号（示例：TN/SAMPLE-DO-DS-V1.0）",
+      "content": "LDFZ-RJ-SRS-V1.0"
+    },
+    "title": {
+      "type": "original_text",
+      "replacement_pattern": "文档标题（示例：软件需求规格说明）",
+      "content": "软件需求规格说明"
+    },
+    "classification": {
+      "type": "original_text",
+      "replacement_pattern": "密级（示例：内部）",
+      "content": "内部"
+    },
+    "phase": {
+      "type": "original_text",
+      "replacement_pattern": "阶段（示例：设计阶段）",
+      "content": "需求分析阶段"
+    },
+    "date": {
+      "type": "original_text",
+      "replacement_pattern": "日期（示例：YYYY-MM-DD）",
+      "content": "XXXX年XX月XX日"
+    }
+  },
+  "content": {
+    "overview": {
+      "type": "background_information",
+      "replacement_pattern": "项目概述",
+      "content": "雷达仿真系统软件在实验室与训练环境下生成、模拟和复现雷达从发射、回波产生到信号处理、数据处理、显控显示的全链路工作过程。"
+    },
+    "scope": {
+      "type": "background_information",
+      "replacement_pattern": "项目范围",
+      "content": "场景管理与配置、目标运动仿真、杂波与干扰仿真、雷达波形与发射链路仿真、回波信号生成、信号处理仿真、数据处理与航迹管理、显控态势显示、数据记录与回放、接口管理、时钟与同步管理"
+    },
+    "features": {
+      "type": "background_information",
+      "replacement_pattern": "功能特性",
+      "content": "全链路数字仿真与半实物仿真、多接口互联、双平台运行、配置化复用、实时时序输出"
+    }
+  }
+}

@@ -1,0 +1,102 @@
+import { fireEvent, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithI18n as render } from "@/renderer/testUtils/i18n";
+import { useSharedSettings } from "@/renderer/state/sharedSettingsStore";
+import { seedBuiltInPlugins } from "@/renderer/testUtils/plugins";
+import { useLocalizedPluginCatalog } from "./pluginCopy";
+import { PluginMarketplace } from "./PluginMarketplace";
+
+function Marketplace(props: { onOpen: (pluginId: string) => void }) {
+  const plugins = useLocalizedPluginCatalog();
+  return <PluginMarketplace plugins={plugins} hostPlatform="win32" onOpen={props.onOpen} />;
+}
+
+describe("PluginMarketplace", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    seedBuiltInPlugins();
+    useSharedSettings.setState({ installedPlugins: {} });
+  });
+
+  it("browses plugins by contribution text, installs one, and exposes management", () => {
+    const onOpen = vi.fn<(pluginId: string) => void>();
+    render(<Marketplace onOpen={onOpen} />);
+
+    expect(screen.getByRole("heading", { name: "Featured" })).toBeInTheDocument();
+    expect(screen.getByText("Browser")).toBeInTheDocument();
+    expect(screen.getByText("Chrome")).toBeInTheDocument();
+    expect(screen.getByText("Terminal")).toBeInTheDocument();
+    // Packages that only wrap a built-in server ship with the app, so they are
+    // managed rather than installed.
+    expect(screen.getByRole("button", { name: "Browser Manage" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Browser" }));
+    expect(onOpen).toHaveBeenCalledWith("browser-tools");
+    onOpen.mockClear();
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Search plugins" }), {
+      target: { value: "github" },
+    });
+
+    expect(screen.getByText("GitHub")).toBeInTheDocument();
+    expect(screen.queryByText("Browser")).not.toBeInTheDocument();
+    // github ships as a bundled skill plugin installed by default, so its card
+    // offers "Manage" straight away (no Install step) and opens its detail.
+    fireEvent.click(screen.getByRole("button", { name: "GitHub Manage" }));
+    expect(onOpen).toHaveBeenLastCalledWith("github");
+  });
+
+  it("surfaces installed plugins in the installed strip", () => {
+    const onOpen = vi.fn<(pluginId: string) => void>();
+    render(<Marketplace onOpen={onOpen} />);
+
+    // The shortcut is named distinctly from the card title so a screen reader
+    // does not read two identically-named controls for the same plugin.
+    const strip = screen.getByRole("heading", { name: "Installed" }).closest("section")!;
+    // Built-in tool plugins and bundled skill plugins (e.g. github) ship
+    // installed, so they appear in the installed strip from the start.
+    expect(within(strip).getByRole("button", { name: "Open Chrome" })).toBeInTheDocument();
+    expect(within(strip).getByRole("button", { name: "Open GitHub" })).toBeInTheDocument();
+
+    fireEvent.click(within(strip).getByRole("button", { name: "Open Chrome" }));
+    expect(onOpen).toHaveBeenCalledWith("chrome-tools");
+  });
+
+  it("groups non-featured plugins under their category", () => {
+    render(<Marketplace onOpen={vi.fn<(pluginId: string) => void>()} />);
+
+    // Every shipped package is featured, so a category heading only appears for
+    // one that is not — the section list is derived, never hardcoded.
+    expect(screen.queryByRole("heading", { name: "Communication" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Featured" })).toBeInTheDocument();
+  });
+
+  it("reports when nothing matches the search", () => {
+    render(<Marketplace onOpen={vi.fn<(pluginId: string) => void>()} />);
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Search plugins" }), {
+      target: { value: "nothing matches this" },
+    });
+
+    expect(screen.getByText("No plugins match your search.")).toBeInTheDocument();
+  });
+
+  it("offers Computer Use on Linux", () => {
+    const onOpen = vi.fn<(pluginId: string) => void>();
+
+    function LinuxMarketplace() {
+      const plugins = useLocalizedPluginCatalog();
+      return <PluginMarketplace plugins={plugins} hostPlatform="linux" onOpen={onOpen} />;
+    }
+
+    render(<LinuxMarketplace />);
+
+    const computerUseCard = screen
+      .getByText("Computer Use")
+      .closest<HTMLElement>("[class*='min-h-40']")!;
+    expect(
+      within(computerUseCard).getByRole("button", { name: "Computer Use Manage" }),
+    ).toBeEnabled();
+    fireEvent.click(within(computerUseCard).getByRole("button", { name: "Computer Use" }));
+    expect(onOpen).toHaveBeenCalledWith("computer-use");
+  });
+});

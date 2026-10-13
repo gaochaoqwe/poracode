@@ -1,0 +1,39 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "code-review",
+  "version": "0.1.0",
+  "description": "Code review for C/C++ projects in three modes — function review, chain review, and feature review — backed by a WASM tree-sitter code index (web-tree-sitter + better-sqlite3). Bundles the three review skills and a stdio MCP server exposing the code index as tools.",
+  "author": {
+    "name": "AgentEmployee"
+  },
+  "homepage": "https://agentemployee.com",
+  "license": "Apache-2.0",
+  "keywords": ["code-review", "tree-sitter", "static-analysis", "c", "cpp", "military-standard"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "Code Review",
+      "category": "developer-tools",
+      "featured": false,
+      "examplePrompt": "Review the navigation module: run a function review over nav.c and report issues with location, type, severity, and a suggested fix.",
+      "coreSkill": "function-review",
+      "skills": {
+        "function-review": {
+          "name": "Function Review",
+          "description": "Review individual C/C++ functions: naming, complexity, error handling, resource/memory safety, null and bounds, magic numbers, returns, side effects, type safety, and documentation. Reports issues with file + stable locator, type, severity, and a suggested direction."
+        },
+        "chain-review": {
+          "name": "Chain Review",
+          "description": "Trace a cross-function call path in C/C++: cycles, chain depth, data-flow breaks, swallowed errors, layering violations, lifetime/dangling references, inconsistent conditions, and shared-state races. Reports issues with file + stable locator, type, severity, and a suggested direction."
+        },
+        "feature-review": {
+          "name": "Feature Review",
+          "description": "Audit a whole C/C++ feature against its requirements: completeness, boundaries, input validation, requirement mismatch, defaults, concurrency/timing, testability, cross-mode consistency, and documentation. Reports issues with file + stable locator, type, severity, and a suggested direction."
+        },
+        "regression-review": {
+          "name": "Regression Review",
+          "description": "Regression review over a code change against an uploaded impact-analysis report: check consistency between the change and the report's claimed impact, and review the change itself for semantic problems. Uses the diff_paths MCP for change diffing. Reports issues with file + stable locator, type, severity, and a suggested direction."
+        }
+      }
+    }
+  }
+}

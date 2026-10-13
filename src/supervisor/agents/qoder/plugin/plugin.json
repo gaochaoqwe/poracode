@@ -1,0 +1,7 @@
+{
+  "name": "agentemployee-status",
+  "version": "1.0.0",
+  "description": "Forward Qoder CLI lifecycle events to AgentEmployee for sidebar status detection.",
+  "author": "AgentEmployee",
+  "license": "Apache-2.0"
+}

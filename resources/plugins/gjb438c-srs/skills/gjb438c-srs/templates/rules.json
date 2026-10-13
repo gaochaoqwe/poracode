@@ -1,0 +1,74 @@
+{
+  "identityLineAnchors": {
+    "document_id": "文档标识号：TN/x-DO-DS-V{N.xx}；",
+    "title": "标题：",
+    "project_name": "软件名称：",
+    "short_name": "软件缩写：",
+    "version": "软件版本号。"
+  },
+  "identityRules": [
+    { "key": "identity.document_id", "anchor": "文档标识号：TN/x-DO-DS-V{N.xx}；", "field": "document.id.content", "prefix": "文档标识号：", "suffix": "；", "expected": 1 },
+    { "key": "identity.title", "anchor": "标题：", "field": "document.title.content", "prefix": "标题：", "suffix": "", "expected": 1 },
+    { "key": "identity.project_name", "anchor": "软件名称：", "field": "project.name.content", "prefix": "软件名称：", "suffix": "", "expected": 1 },
+    { "key": "identity.short_name", "anchor": "软件缩写：", "field": "project.short_name.content", "prefix": "软件缩写：", "suffix": "", "expected": 1 },
+    { "key": "identity.version", "anchor": "软件版本号。", "field": "project.version.content", "prefix": "软件版本号：", "suffix": "。", "expected": 1 }
+  ],
+  "patternOverrides": {
+    "1.2": "本条应概述本文档所适用软件的用途。它还应描述软件的一般特性，概述系统开发、运行和维护的历史；标识项目的需方、用户、开发方和保障机构等；标识当前和计划的运行现场；列出其他有关文档。",
+    "5": "本章应描述"
+  },
+  "coverRules": [
+    { "key": "cover.project_name", "anchor": "外部型号+产品名称", "field": "project.name.content", "prefix": "", "suffix": "", "expected": 2 },
+    { "key": "cover.document_title", "anchor": "软件需求规格说明", "field": "document.title.content", "prefix": "", "suffix": "", "expected": 2 },
+    { "key": "cover.short_name", "anchor": "产品型号-XXXX", "field": "project.short_name.content", "prefix": "产品型号-", "suffix": "", "expected": 2 },
+    { "key": "cover.company", "anchor": "XXXXXXXX公司", "field": "project.company.content", "prefix": "", "suffix": "", "expected": 1 },
+    { "key": "cover.date", "anchor": "XXXX年XX月XX日", "field": "document.date.content", "prefix": "", "suffix": "", "expected": 1 },
+    { "key": "cover.classification", "anchor": "密  级： 公开", "field": "document.classification.content", "prefix": "密  级： ", "suffix": "", "expected": 1 },
+    { "key": "cover.phase", "anchor": "阶  段：     ", "field": "document.phase.content", "prefix": "阶  段： ", "suffix": "", "expected": 1 },
+    { "key": "cover.version", "anchor": "版  次： A 版", "field": "project.version.content", "prefix": "版  次： ", "suffix": "", "expected": 1 }
+  ],
+  "insertionParentScope": "placeholder",
+  "insertionParentRules": {
+    "3.1": {
+      "parent_title": "要求的状态和方式",
+      "summary_anchor": "如果要求软件在多种状态或方式下运行，并且不同的状态或方式具有不同的需求，则应标识和定义每一状态和方式。",
+      "end_before_title": "软件能力需求",
+      "prototype_title_anchor": "3.10.1计算机硬件需求",
+      "prototype_body_anchor": "本条应描述针对本软件必须使用的计算机硬件的需求（若有）。",
+      "cleanup_anchors": [],
+      "cleanup_to_end": false
+    },
+    "3.2": {
+      "parent_title": "软件能力需求",
+      "summary_anchor": "为详细说明与软件各个能力相关的需求，本条可分为若干子条。",
+      "end_before_title": "软件外部接口需求",
+      "prototype_title_anchor": "3.10.1计算机硬件需求",
+      "prototype_body_anchor": "本条应描述针对本软件必须使用的计算机硬件的需求（若有）。",
+      "cleanup_anchors": ["3.2.X（软件能力）"],
+      "cleanup_to_end": true
+    },
+    "3.3": {
+      "parent_title": "软件外部接口需求",
+      "summary_anchor": "本条可分为若干个小条来规定关于软件的外部接口的需求（若有）。",
+      "end_before_title": "软件内部接口需求",
+      "prototype_title_anchor": "3.10.1计算机硬件需求",
+      "prototype_body_anchor": "本条应描述针对本软件必须使用的计算机硬件的需求（若有）。",
+      "cleanup_anchors": [
+        "接口标识和接口图",
+        "本条应标识所需要的软件外部接口（即，与涉及共享、提供或交换数据的其他实体的关系）。"
+      ],
+      "cleanup_to_end": true
+    },
+    "3.4": {
+      "parent_title": "软件内部接口需求",
+      "summary_anchor": "本条应描述施加于软件内部接口的需求（若有）。",
+      "end_before_title": "软件内部数据需求",
+      "prototype_title_anchor": "3.10.1计算机硬件需求",
+      "prototype_body_anchor": "本条应描述针对本软件必须使用的计算机硬件的需求（若有）。",
+      "cleanup_anchors": [],
+      "cleanup_to_end": false
+    }
+  },
+  "headingSeparator": "chapter3",
+  "captionMode": "strict"
+}

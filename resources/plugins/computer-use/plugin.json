@@ -1,0 +1,43 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "computer-use",
+  "version": "1.8.6",
+  "description": "Control desktop apps in the background and complete visual workflows.",
+  "author": {
+    "name": "AgentEmployee",
+    "url": "https://agentemployee.com"
+  },
+  "homepage": "https://agentemployee.com",
+  "license": "Apache-2.0",
+  "keywords": ["desktop", "automation", "computer-use"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "Computer Use",
+      "category": "automation",
+      "featured": true,
+      "examplePrompt": "Operate the requested desktop app in small verified steps and report the final window state",
+      "platforms": ["win32", "darwin", "linux"],
+      "projectKinds": ["windows", "posix"],
+      "coreSkill": "computer-use",
+      "nativePluginNames": ["computer-use"],
+      "nativeCoreSkill": "computer-use",
+      "builtInMcpServerIds": ["computer-use"],
+      "skills": {
+        "computer-use": {
+          "name": "Computer Use",
+          "description": "Operate desktop apps through AgentEmployee's desktop-control tools.",
+          "nativePluginName": "computer-use",
+          "nativeSkill": "computer-use"
+        },
+        "desktop-app-testing": {
+          "name": "Desktop App Testing",
+          "description": "Walk a native app through a flow and verify each step from the window itself."
+        },
+        "mxt-collect": {
+          "name": "mxt Collection",
+          "description": "Read new tasks off the mxt Windows desktop chat app through computer-use and hand a digest to the chief steward."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,155 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtractContextResult } from "@/shared/contracts";
+import { buildForkMentionLaunchInput, buildHandoffLaunchInput } from "./providerHandoff";
+
+describe("buildForkMentionLaunchInput", () => {
+  it("leads with a mention of the source thread and keeps the user's prompt", () => {
+    const launch = buildForkMentionLaunchInput({
+      sourceThread: { id: "source-1", title: "Incident triage" },
+      prompt: "Try the other approach",
+      segments: undefined,
+    });
+
+    expect(launch.segments).toEqual([
+      { kind: "thread", threadId: "source-1", title: "Incident triage" },
+      { kind: "text", content: " " },
+      { kind: "text", content: "Try the other approach" },
+    ]);
+    expect(launch.prompt).toContain("Try the other approach");
+    expect(launch.prompt).toContain("Incident triage");
+  });
+
+  it("preserves structured prompt segments after the mention", () => {
+    const launch = buildForkMentionLaunchInput({
+      sourceThread: { id: "source-1", title: "Incident triage" },
+      prompt: "see file",
+      segments: [
+        { kind: "attachment", path: "/tmp/shot.png", mimeType: "image/png" },
+        { kind: "text", content: "see file" },
+      ],
+    });
+
+    expect(launch.segments?.[0]).toEqual({
+      kind: "thread",
+      threadId: "source-1",
+      title: "Incident triage",
+    });
+    expect(launch.segments?.[2]).toEqual({
+      kind: "attachment",
+      path: "/tmp/shot.png",
+      mimeType: "image/png",
+    });
+  });
+});
+
+const originalAgentEmployee = window.agentemployee;
+
+function extracted(overrides: Partial<ExtractContextResult> = {}): ExtractContextResult {
+  return {
+    summary: "Prior context",
+    sourceProvider: "gdsAgent",
+    sourceSessionId: "session-1",
+    extractedAt: "2026-09-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("buildHandoffLaunchInput", () => {
+  let saveHandoffContext: ReturnType<typeof vi.fn<() => Promise<string>>>;
+
+  beforeEach(() => {
+    saveHandoffContext = vi.fn<() => Promise<string>>(async () => "/repo/.agentemployee/handoff.md");
+    window.agentemployee = { saveHandoffContext } as unknown as typeof window.agentemployee;
+  });
+
+  afterEach(() => {
+    window.agentemployee = originalAgentEmployee;
+  });
+
+  it("introduces a provider summary as a context file", async () => {
+    const launch = await buildHandoffLaunchInput({
+      threadId: "t1",
+      prompt: "Continue",
+      segments: undefined,
+      extractedContext: extracted(),
+    });
+
+    expect(launch.prompt).toBe(
+      "This task was handed off from a gdsAgent session. Use the attached context file as prior conversation context.\n\nContinue",
+    );
+    expect(launch.segments).toEqual([
+      expect.objectContaining({ kind: "text" }),
+      { kind: "attachment", path: "/repo/.agentemployee/handoff.md", mimeType: "text/markdown" },
+      { kind: "text", content: "\n\n" },
+      { kind: "text", content: "Continue" },
+    ]);
+  });
+
+  it("tells the provider to read a verbatim chat history in full", async () => {
+    const launch = await buildHandoffLaunchInput({
+      threadId: "t1",
+      prompt: "Continue",
+      segments: undefined,
+      extractedContext: extracted({ contentKind: "transcript" }),
+    });
+
+    expect(launch.prompt).toContain("The attached file is the chat history of this conversation");
+    expect(launch.prompt).toContain("Read it in full before answering");
+    expect(launch.prompt).not.toContain("attached context file");
+    expect(saveHandoffContext).toHaveBeenCalledWith({ threadId: "t1", content: "Prior context" });
+  });
+
+  it("keeps a large transcript intact when attachment delivery succeeds", async () => {
+    const summary = "文".repeat(1_400_000);
+    const launch = await buildHandoffLaunchInput({
+      threadId: "t1",
+      prompt: "Continue",
+      segments: undefined,
+      extractedContext: extracted({ summary, contentKind: "transcript" }),
+    });
+
+    expect(saveHandoffContext).toHaveBeenCalledWith({ threadId: "t1", content: summary });
+    expect(launch.prompt.length).toBeLessThan(1_000);
+    expect(launch.segments).toContainEqual(expect.objectContaining({ kind: "attachment" }));
+  });
+
+  it.each(["文", "\u0000"])(
+    "bounds fallback JSON while keeping both ends of %j context",
+    async (fill) => {
+      saveHandoffContext.mockRejectedValueOnce(new Error("disk full"));
+      const launch = await buildHandoffLaunchInput({
+        threadId: "t1",
+        prompt: "Next task",
+        segments: undefined,
+        extractedContext: extracted({
+          summary: `Original ask\n${fill.repeat(400_000)}\nLatest result`,
+          contentKind: "transcript",
+        }),
+      });
+
+      expect(launch.prompt).toContain("Original ask");
+      expect(launch.prompt).toContain("Latest result");
+      expect(launch.prompt).toContain("[transferred context omitted]");
+      expect(launch.prompt.endsWith("Next task")).toBe(true);
+      expect(Buffer.byteLength(JSON.stringify(launch))).toBeLessThan(1_048_576);
+      expect(launch.segments?.[0]).toEqual({
+        kind: "text",
+        content: launch.prompt.slice(0, -"Next task".length),
+      });
+    },
+  );
+
+  it("labels an inlined chat history when the file write fails", async () => {
+    saveHandoffContext.mockRejectedValueOnce(new Error("disk full"));
+
+    const launch = await buildHandoffLaunchInput({
+      threadId: "t1",
+      prompt: "Continue",
+      segments: undefined,
+      extractedContext: extracted({ contentKind: "transcript" }),
+    });
+
+    expect(launch.prompt.startsWith("[Chat history from previous gdsAgent session]\n\n")).toBe(true);
+    expect(launch.prompt.endsWith("Prior context\n\nContinue")).toBe(true);
+  });
+});

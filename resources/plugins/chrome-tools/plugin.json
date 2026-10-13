@@ -1,0 +1,46 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "chrome-tools",
+  "version": "1.3.1",
+  "description": "Work with the pages and signed-in sessions already open in Chrome.",
+  "author": {
+    "name": "AgentEmployee",
+    "url": "https://agentemployee.com"
+  },
+  "homepage": "https://agentemployee.com",
+  "license": "Apache-2.0",
+  "keywords": ["chrome", "browser", "automation"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "Chrome",
+      "category": "automation",
+      "featured": true,
+      "examplePrompt": "Use my existing Chrome session to complete this browser task and verify the final visible state",
+      "projectKinds": ["windows", "posix"],
+      "coreSkill": "chrome-control",
+      "nativePluginNames": ["chrome"],
+      "nativeCoreSkill": "control-chrome",
+      "builtInMcpServerIds": ["chrome"],
+      "skills": {
+        "chrome-control": {
+          "name": "Chrome Control",
+          "description": "Use Chrome safely when a task needs an existing browser session.",
+          "nativePluginName": "chrome",
+          "nativeSkill": "control-chrome"
+        },
+        "signed-in-research": {
+          "name": "Signed-in Research",
+          "description": "Read pages that need the user's own Chrome login, without touching the rest of their session."
+        },
+        "pipeline-control": {
+          "name": "Pipeline Control",
+          "description": "Drive the evaluation-center test pipeline through signed-in Chrome: stage-wise workbook imports, node advancement, report generation. Flow only."
+        },
+        "oa-jprjcp-collect": {
+          "name": "OA / jprjcp Collection",
+          "description": "Collect new OA and jprjcp intranet tasks through signed-in Chrome and hand a digest to the chief steward."
+        }
+      }
+    }
+  }
+}

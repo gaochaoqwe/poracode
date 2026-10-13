@@ -1,0 +1,1578 @@
+[
+ {
+  "rule_code": "S_01_01",
+  "rule_name": "Cpp类型强制转换为BSTR",
+  "accuracy_type": "accurate",
+  "category": "类型转换错误",
+  "rule_description": "Cpp类型强制转换为BSTR",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_01_02",
+  "rule_name": "C类型强制转换为BSTR",
+  "accuracy_type": "accurate",
+  "category": "类型转换错误",
+  "rule_description": "C类型强制转换为BSTR",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_01",
+  "rule_name": "bool类型递增、递减操作",
+  "accuracy_type": "accurate",
+  "category": "类型操作错误",
+  "rule_description": "bool类型递增、递减操作",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_02",
+  "rule_name": "main函数返回值应为int类型",
+  "accuracy_type": "accurate",
+  "category": "函数签名错误",
+  "rule_description": "main函数返回值应为int类型",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_04",
+  "rule_name": "switch标签为空",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "switch标签为空",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_05",
+  "rule_name": "typedef内容为空",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "typedef内容为空",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_06",
+  "rule_name": "不同位数变量进行位运算",
+  "accuracy_type": "accurate",
+  "category": "类型不匹配",
+  "rule_description": "不同位数变量进行位运算",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_07",
+  "rule_name": "与EOF比较变量类型不当",
+  "accuracy_type": "accurate",
+  "category": "类型不匹配",
+  "rule_description": "与EOF比较变量类型不当",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_09",
+  "rule_name": "使用隐式int类型返回值",
+  "accuracy_type": "accurate",
+  "category": "类型声明错误",
+  "rule_description": "使用隐式int类型返回值",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_10",
+  "rule_name": "内存操作应用于非POD类型的对象",
+  "accuracy_type": "accurate",
+  "category": "类型操作错误",
+  "rule_description": "内存操作应用于非POD类型的对象",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_11",
+  "rule_name": "函数地址当做调用",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "函数地址当做调用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_12",
+  "rule_name": "函数通过值传递传占空间过大的参数",
+  "accuracy_type": "accurate",
+  "category": "性能问题",
+  "rule_description": "函数通过值传递传占空间过大的参数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_13",
+  "rule_name": "sizeof用于指针类型",
+  "accuracy_type": "accurate",
+  "category": "类型操作错误",
+  "rule_description": "sizeof用于指针类型",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_14",
+  "rule_name": "将函数地址与0比较",
+  "accuracy_type": "accurate",
+  "category": "类型操作错误",
+  "rule_description": "将函数地址与0比较",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_15",
+  "rule_name": "异常中通过值传递传占空间过大的参数",
+  "accuracy_type": "accurate",
+  "category": "性能问题",
+  "rule_description": "异常中通过值传递传占空间过大的参数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_16",
+  "rule_name": "存在拷贝构造函数需重载赋值运算符",
+  "accuracy_type": "accurate",
+  "category": "类设计错误",
+  "rule_description": "存在拷贝构造函数需重载赋值运算符",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_18",
+  "rule_name": "指针加法位数错误",
+  "accuracy_type": "accurate",
+  "category": "类型错误",
+  "rule_description": "指针加法位数错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_19",
+  "rule_name": "数值范围导致的无效判断",
+  "accuracy_type": "uncertain",
+  "category": "逻辑错误",
+  "rule_description": "数值范围导致的无效判断",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_20",
+  "rule_name": "无意义的自赋值",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "无意义的自赋值",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_21",
+  "rule_name": "无效的比较大小",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "无效的比较大小",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_22",
+  "rule_name": "有符号类型变量位域不能为1",
+  "accuracy_type": "accurate",
+  "category": "类型错误",
+  "rule_description": "有符号类型变量位域不能为1",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_23",
+  "rule_name": "类成员变量初始化顺序",
+  "accuracy_type": "accurate",
+  "category": "初始化错误",
+  "rule_description": "类成员变量初始化顺序",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_24",
+  "rule_name": "继承关系中可能的大小写错误",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "继承关系中可能的大小写错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_26",
+  "rule_name": "虚函数const不匹配",
+  "accuracy_type": "accurate",
+  "category": "函数签名错误",
+  "rule_description": "虚函数const不匹配",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_27",
+  "rule_name": "虚函数使用不当",
+  "accuracy_type": "accurate",
+  "category": "函数使用错误",
+  "rule_description": "虚函数使用不当",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_28",
+  "rule_name": "逻辑完整性",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "逻辑完整性",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_32",
+  "rule_name": "固定地址赋给指针",
+  "accuracy_type": "accurate",
+  "category": "类型错误",
+  "rule_description": "固定地址赋给指针",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_33",
+  "rule_name": "非法强转为结构体指针",
+  "accuracy_type": "accurate",
+  "category": "类型转换错误",
+  "rule_description": "非法强转为结构体指针",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_34",
+  "rule_name": "使用不兼容的类型访问资源",
+  "accuracy_type": "accurate",
+  "category": "类型不匹配",
+  "rule_description": "使用不兼容的类型访问资源",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_43",
+  "rule_name": "无效语句",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "无效语句",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_44",
+  "rule_name": "预期行为违背",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "预期行为违背",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_45",
+  "rule_name": "fsetpos使用的值并不是从fgetpos获得",
+  "accuracy_type": "accurate",
+  "category": "API使用错误",
+  "rule_description": "fsetpos使用的值并不是从fgetpos获得",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_46",
+  "rule_name": "使用被重写的对象",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "使用被重写的对象",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_47",
+  "rule_name": "将全局变量强制转换为更高类型",
+  "accuracy_type": "accurate",
+  "category": "类型转换错误",
+  "rule_description": "将全局变量强制转换为更高类型",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_48",
+  "rule_name": "sizeof结构体指针类型",
+  "accuracy_type": "accurate",
+  "category": "类型操作错误",
+  "rule_description": "sizeof结构体指针类型",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_49",
+  "rule_name": "memset函数与memcpy函数混用",
+  "accuracy_type": "accurate",
+  "category": "函数使用错误",
+  "rule_description": "memset函数与memcpy函数混用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_50",
+  "rule_name": "memcpy函数dst与src参数类型不符",
+  "accuracy_type": "uncertain",
+  "category": "类型不匹配",
+  "rule_description": "memcpy函数dst与src参数类型不符",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_51",
+  "rule_name": "union的不同成员所占长度不一致",
+  "accuracy_type": "uncertain",
+  "category": "类型定义错误",
+  "rule_description": "union的不同成员所占长度不一致",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_03_01",
+  "rule_name": "代码不可达",
+  "accuracy_type": "uncertain",
+  "category": "语法错误",
+  "rule_description": "代码不可达",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_19_01",
+  "rule_name": "字符串差一错误",
+  "accuracy_type": "accurate",
+  "category": "字符串错误",
+  "rule_description": "字符串差一错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_01",
+  "rule_name": "不建议使用不安全的ChangeWindowMessageFilter函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的ChangeWindowMessageFilter函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_02",
+  "rule_name": "不建议使用不安全的Makepath类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的Makepath类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_03",
+  "rule_name": "不建议使用不安全的OEM字符转换类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的OEM字符转换类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_04",
+  "rule_name": "不建议使用不安全的Splitpath类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的Splitpath类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_05",
+  "rule_name": "不建议使用不安全的alloca类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的alloca类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_06",
+  "rule_name": "不建议使用不安全的nscanf类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的nscanf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_07",
+  "rule_name": "不建议使用不安全的nsprintf类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的nsprintf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_08",
+  "rule_name": "不建议使用不安全的scanf类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的scanf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_09",
+  "rule_name": "不建议使用不安全的sprintf类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的sprintf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_10",
+  "rule_name": "不建议使用不安全的string tokenizing类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的string tokenizing类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_11",
+  "rule_name": "不建议使用不安全的strlen类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的strlen类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_12",
+  "rule_name": "不建议使用不安全的vsnprintf类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的vsnprintf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_13",
+  "rule_name": "不建议使用不安全的数值转换类函数",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用不安全的数值转换类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_04_14",
+  "rule_name": "不建议使用没有长度限制的cin运算符",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用没有长度限制的cin运算符",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_05_03",
+  "rule_name": "多次释放内存",
+  "accuracy_type": "accurate",
+  "category": "内存管理错误",
+  "rule_description": "多次释放内存",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_03",
+  "rule_name": "释放与分配内存不匹配",
+  "accuracy_type": "accurate",
+  "category": "内存管理错误",
+  "rule_description": "释放与分配内存不匹配",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_04",
+  "rule_name": "delete void*类型导致不调用析构函数",
+  "accuracy_type": "accurate",
+  "category": "类型错误",
+  "rule_description": "delete void*类型导致不调用析构函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_07_01",
+  "rule_name": "内联关键字不是作用于函数上",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "内联关键字不是作用于函数上",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_09_01",
+  "rule_name": "静态函数未使用",
+  "accuracy_type": "accurate",
+  "category": "未使用代码",
+  "rule_description": "静态函数未使用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_10_01",
+  "rule_name": "错误使用分号",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "错误使用分号",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_11_01",
+  "rule_name": "分配内存方法错误",
+  "accuracy_type": "accurate",
+  "category": "API使用错误",
+  "rule_description": "分配内存方法错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_12_01",
+  "rule_name": "判断条件为常数",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "判断条件为常数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_13_01",
+  "rule_name": "调用外部文件未使用完整路径",
+  "accuracy_type": "accurate",
+  "category": "路径问题",
+  "rule_description": "调用外部文件未使用完整路径",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_14_01",
+  "rule_name": "变量声明后未定义",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "变量声明后未定义",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_14_02",
+  "rule_name": "变量定义后未使用",
+  "accuracy_type": "accurate",
+  "category": "未使用代码",
+  "rule_description": "变量定义后未使用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_14_03",
+  "rule_name": "未使用的标签",
+  "accuracy_type": "accurate",
+  "category": "未使用代码",
+  "rule_description": "未使用的标签",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_16_02",
+  "rule_name": "标签错误导致混乱",
+  "accuracy_type": "accurate",
+  "category": "逻辑错误",
+  "rule_description": "标签错误导致混乱",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_17_01",
+  "rule_name": "代码存在可移植性问题-字节大小",
+  "accuracy_type": "accurate",
+  "category": "可移植性问题",
+  "rule_description": "代码存在可移植性问题-字节大小",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_17_02",
+  "rule_name": "代码存在可移植性问题-字节序问题",
+  "accuracy_type": "accurate",
+  "category": "可移植性问题",
+  "rule_description": "代码存在可移植性问题-字节序问题",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_18_01",
+  "rule_name": "头文件中使用绝对路径",
+  "accuracy_type": "accurate",
+  "category": "路径问题",
+  "rule_description": "头文件中使用绝对路径",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_19_02",
+  "rule_name": "字符串未添加终止符",
+  "accuracy_type": "accurate",
+  "category": "字符串错误",
+  "rule_description": "字符串未添加终止符",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_20_01",
+  "rule_name": "互斥锁获得锁后不能进入睡眠状态",
+  "accuracy_type": "accurate",
+  "category": "并发错误",
+  "rule_description": "互斥锁获得锁后不能进入睡眠状态",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_22_01",
+  "rule_name": "类赋值表达式中用其他运算符",
+  "accuracy_type": "accurate",
+  "category": "运算符错误",
+  "rule_description": "类赋值表达式中用其他运算符",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_22_02",
+  "rule_name": "无效跳转语句和条件语句",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "无效跳转语句和条件语句",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_22_03",
+  "rule_name": "禁止使用不起作用的语句",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "禁止使用不起作用的语句",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_24_01",
+  "rule_name": "没有包含同名的头文件",
+  "accuracy_type": "accurate",
+  "category": "包含错误",
+  "rule_description": "没有包含同名的头文件",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_26_01",
+  "rule_name": "使用未知转义字符",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "使用未知转义字符",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_26_02",
+  "rule_name": "参数数量不匹配",
+  "accuracy_type": "accurate",
+  "category": "函数调用错误",
+  "rule_description": "参数数量不匹配",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_26_04",
+  "rule_name": "参数类型不兼容",
+  "accuracy_type": "accurate",
+  "category": "类型不匹配",
+  "rule_description": "参数类型不兼容",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_26_05",
+  "rule_name": "缺少长度限制",
+  "accuracy_type": "accurate",
+  "category": "API使用错误",
+  "rule_description": "缺少长度限制",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_26_06",
+  "rule_name": "修改字符串常量",
+  "accuracy_type": "accurate",
+  "category": "语法错误",
+  "rule_description": "修改字符串常量",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_28_01",
+  "rule_name": "使用不安全的宏参数",
+  "accuracy_type": "accurate",
+  "category": "宏定义错误",
+  "rule_description": "使用不安全的宏参数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_01",
+  "rule_name": "禁止使用不安全的IsBad类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的IsBad类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_02",
+  "rule_name": "禁止使用不安全的gets类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的gets类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_03",
+  "rule_name": "禁止使用不安全的memorycopy类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的memorycopy类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_04",
+  "rule_name": "禁止使用不安全的sprintf类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的sprintf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_05",
+  "rule_name": "禁止使用不安全的strcat类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的strcat类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_06",
+  "rule_name": "禁止使用不安全的strcpy类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的strcpy类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_07",
+  "rule_name": "禁止使用不安全的strncat类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的strncat类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_08",
+  "rule_name": "禁止使用不安全的strncpy类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的strncpy类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_29_09",
+  "rule_name": "禁止使用不安全的vsprintf类函数",
+  "accuracy_type": "accurate",
+  "category": "禁止API",
+  "rule_description": "禁止使用不安全的vsprintf类函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_30_05",
+  "rule_name": "被赋值为NULL的指针发生空指针解引用",
+  "accuracy_type": "accurate",
+  "category": "空指针分析",
+  "rule_description": "被赋值为NULL的指针发生空指针解引用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_32_01",
+  "rule_name": "强制类型转换可能丢失精度",
+  "accuracy_type": "accurate",
+  "category": "类型转换检查",
+  "rule_description": "强制类型转换可能丢失精度",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_32_02",
+  "rule_name": "隐式类型转换可能丢失精度",
+  "accuracy_type": "accurate",
+  "category": "类型转换检查",
+  "rule_description": "隐式类型转换可能丢失精度",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_33_01",
+  "rule_name": "加锁后未判断是否成功",
+  "accuracy_type": "accurate",
+  "category": "并发错误检查",
+  "rule_description": "加锁后未判断是否成功",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_35_01",
+  "rule_name": "过多的注册表信息",
+  "accuracy_type": "accurate",
+  "category": "配置问题",
+  "rule_description": "过多的注册表信息",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_37_01",
+  "rule_name": "函数返回局部变量的地址",
+  "accuracy_type": "accurate",
+  "category": "返回值错误",
+  "rule_description": "函数返回局部变量的地址",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_37_02",
+  "rule_name": "空函数有返回值",
+  "accuracy_type": "accurate",
+  "category": "函数签名错误",
+  "rule_description": "空函数有返回值",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_37_03",
+  "rule_name": "重载等号不标准",
+  "accuracy_type": "accurate",
+  "category": "运算符重载错误",
+  "rule_description": "重载等号不标准",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_37_04",
+  "rule_name": "非空函数无返回值",
+  "accuracy_type": "accurate",
+  "category": "函数签名错误",
+  "rule_description": "非空函数无返回值",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_37_05",
+  "rule_name": "非空函数无返回语句",
+  "accuracy_type": "accurate",
+  "category": "函数实现错误",
+  "rule_description": "非空函数无返回语句",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_38_01",
+  "rule_name": "迭代器指向错误",
+  "accuracy_type": "accurate",
+  "category": "迭代器错误",
+  "rule_description": "迭代器指向错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_38_02",
+  "rule_name": "迭代器被置无效",
+  "accuracy_type": "accurate",
+  "category": "迭代器错误",
+  "rule_description": "迭代器被置无效",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_39_01",
+  "rule_name": "释放非堆内存",
+  "accuracy_type": "accurate",
+  "category": "内存管理错误",
+  "rule_description": "释放非堆内存",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_40_01",
+  "rule_name": "资源状态不允许（如未打开）即使用或释放",
+  "accuracy_type": "accurate",
+  "category": "资源管理错误",
+  "rule_description": "资源状态不允许（如未打开）即使用或释放",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_40_03",
+  "rule_name": "没有按照资源的规格说明操作资源",
+  "accuracy_type": "accurate",
+  "category": "API使用错误",
+  "rule_description": "没有按照资源的规格说明操作资源",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_01",
+  "rule_name": "函数参数非法",
+  "accuracy_type": "accurate",
+  "category": "参数错误",
+  "rule_description": "函数参数非法",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_02",
+  "rule_name": "非法数学计算(除0以及函数越界)",
+  "accuracy_type": "uncertain",
+  "category": "逻辑错误",
+  "rule_description": "非法数学计算(除0以及函数越界)",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_05",
+  "rule_name": "移位运算导致的基本类型数溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出检查",
+  "rule_description": "移位运算导致的基本类型数溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_49_01",
+  "rule_name": "明文存储密码",
+  "accuracy_type": "accurate",
+  "category": "安全问题",
+  "rule_description": "明文存储密码",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_49_06",
+  "rule_name": "缺少需要的加密步骤",
+  "accuracy_type": "accurate",
+  "category": "安全问题",
+  "rule_description": "缺少需要的加密步骤",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_49_07",
+  "rule_name": "可逆的单向哈希",
+  "accuracy_type": "accurate",
+  "category": "安全问题",
+  "rule_description": "可逆的单向哈希",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_49_08",
+  "rule_name": "使用具有密码学弱点的伪随机数生成器",
+  "accuracy_type": "accurate",
+  "category": "安全问题",
+  "rule_description": "使用具有密码学弱点的伪随机数生成器",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_52_01",
+  "rule_name": "不安全地绑定套接字",
+  "accuracy_type": "accurate",
+  "category": "网络安全检查",
+  "rule_description": "不安全地绑定套接字",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_52_02",
+  "rule_name": "不建议使用容易出现电子欺骗漏洞的系统调用",
+  "accuracy_type": "accurate",
+  "category": "不安全API",
+  "rule_description": "不建议使用容易出现电子欺骗漏洞的系统调用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_08",
+  "rule_name": "与sizeof相关的可能错误的指针计算",
+  "accuracy_type": "uncertain",
+  "category": "需要上下文分析",
+  "rule_description": "与sizeof相关的可能错误的指针计算",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_17",
+  "rule_name": "指针作为类成员变量可能发生内存覆盖问题",
+  "accuracy_type": "uncertain",
+  "category": "需要数据流分析",
+  "rule_description": "指针作为类成员变量可能发生内存覆盖问题",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_25",
+  "rule_name": "由于没有进行自赋值检测而导致的重复释放内存",
+  "accuracy_type": "uncertain",
+  "category": "需要数据流分析",
+  "rule_description": "由于没有进行自赋值检测而导致的重复释放内存",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_35",
+  "rule_name": "未控制的递归",
+  "accuracy_type": "uncertain",
+  "category": "需要调用图分析",
+  "rule_description": "未控制的递归",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_36",
+  "rule_name": "使用RSA算法没有使用OAEP",
+  "accuracy_type": "uncertain",
+  "category": "需要上下文分析",
+  "rule_description": "使用RSA算法没有使用OAEP",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_40",
+  "rule_name": "使用指针相减确定大小",
+  "accuracy_type": "uncertain",
+  "category": "需要上下文分析",
+  "rule_description": "使用指针相减确定大小",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_41",
+  "rule_name": "数据结构哨兵",
+  "accuracy_type": "uncertain",
+  "category": "需要上下文分析",
+  "rule_description": "数据结构哨兵",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_02_42",
+  "rule_name": "不完备的清理",
+  "accuracy_type": "accurate",
+  "category": "需要资源追踪",
+  "rule_description": "不完备的清理",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_05_01",
+  "rule_name": "使用释放后的内存",
+  "accuracy_type": "accurate",
+  "category": "Use-after-free，需要数据流分析",
+  "rule_description": "使用释放后的内存",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_05_02",
+  "rule_name": "返回释放后的内存",
+  "accuracy_type": "accurate",
+  "category": "Use-after-free，需要数据流分析",
+  "rule_description": "返回释放后的内存",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_01",
+  "rule_name": "分配内存未释放",
+  "accuracy_type": "accurate",
+  "category": "内存泄漏，需要资源追踪",
+  "rule_description": "分配内存未释放",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_02",
+  "rule_name": "delete void*类型可能导致不调用析构函数",
+  "accuracy_type": "accurate",
+  "category": "可能误报",
+  "rule_description": "delete void*类型可能导致不调用析构函数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_07",
+  "rule_name": "可疑的内存泄漏",
+  "accuracy_type": "uncertain",
+  "category": "内存泄漏，需要资源追踪",
+  "rule_description": "可疑的内存泄漏",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_08",
+  "rule_name": "未释放构造函数分配的内存可能导致的内存泄漏",
+  "accuracy_type": "uncertain",
+  "category": "内存泄漏",
+  "rule_description": "未释放构造函数分配的内存可能导致的内存泄漏",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_06_09",
+  "rule_name": "Variant使用异常导致的内存泄漏",
+  "accuracy_type": "uncertain",
+  "category": "内存泄漏",
+  "rule_description": "Variant使用异常导致的内存泄漏",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_08_01",
+  "rule_name": "函数传参被局部变量覆盖",
+  "accuracy_type": "accurate",
+  "category": "需要上下文分析",
+  "rule_description": "函数传参被局部变量覆盖",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_11_02",
+  "rule_name": "释放的指针不是缓冲区的开始",
+  "accuracy_type": "uncertain",
+  "category": "需要指针分析",
+  "rule_description": "释放的指针不是缓冲区的开始",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_15_01",
+  "rule_name": "变量未初始化使用",
+  "accuracy_type": "uncertain",
+  "category": "需要数据流分析",
+  "rule_description": "变量未初始化使用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_15_02",
+  "rule_name": "可疑的变量未初始化使用",
+  "accuracy_type": "uncertain",
+  "category": "可能误报",
+  "rule_description": "可疑的变量未初始化使用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_15_03",
+  "rule_name": "类的所有成员变量必须在构造函数中初始化",
+  "accuracy_type": "accurate",
+  "category": "需要构造函数分析",
+  "rule_description": "类的所有成员变量必须在构造函数中初始化",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_16_01",
+  "rule_name": "分配内存空间由于指针产生大小错误",
+  "accuracy_type": "uncertain",
+  "category": "需要类型和上下文分析",
+  "rule_description": "分配内存空间由于指针产生大小错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "C/ C++检测指针越界",
+  "rule_name": "指针越界，需要边界检查分析",
+  "accuracy_type": "uncertain",
+  "category": "需要分析",
+  "rule_description": "指针越界，需要边界检查分析",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_01",
+  "rule_name": "一般的数组越界",
+  "accuracy_type": "uncertain",
+  "category": "数组越界",
+  "rule_description": "一般的数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_02",
+  "rule_name": "发生在迭代中的数组越界",
+  "accuracy_type": "uncertain",
+  "category": "数组越界",
+  "rule_description": "发生在迭代中的数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_03",
+  "rule_name": "由于污染数据导致的数组越界",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "由于污染数据导致的数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_04",
+  "rule_name": "未知大小的下标导致的数组越界",
+  "accuracy_type": "uncertain",
+  "category": "数组越界",
+  "rule_description": "未知大小的下标导致的数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_05",
+  "rule_name": "结构体成员变量发生的数组越界",
+  "accuracy_type": "uncertain",
+  "category": "数组越界",
+  "rule_description": "结构体成员变量发生的数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_06",
+  "rule_name": "整型溢出导致缓冲区溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出",
+  "rule_description": "整型溢出导致缓冲区溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_07",
+  "rule_name": "使用路径操作函数把结果输出到较小的缓冲区",
+  "accuracy_type": "uncertain",
+  "category": "缓冲区溢出",
+  "rule_description": "使用路径操作函数把结果输出到较小的缓冲区",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_08",
+  "rule_name": "库被外部引用可能导致的数组越界",
+  "accuracy_type": "uncertain",
+  "category": "可能误报",
+  "rule_description": "库被外部引用可能导致的数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_09",
+  "rule_name": "污染数据用于库函数参数导致缓冲区溢出",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据用于库函数参数导致缓冲区溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_10",
+  "rule_name": "污染数据用于数组下标导致缓冲区溢出",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据用于数组下标导致缓冲区溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_21_11",
+  "rule_name": "污染数据间接导致数组越界",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据间接导致数组越界",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_23_01",
+  "rule_name": "可能不变的循环因子",
+  "accuracy_type": "uncertain",
+  "category": "需要数据流分析",
+  "rule_description": "可能不变的循环因子",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_23_02",
+  "rule_name": "循环跳出条件无法满足",
+  "accuracy_type": "uncertain",
+  "category": "需要约束求解",
+  "rule_description": "循环跳出条件无法满足",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_23_03",
+  "rule_name": "函数循环调用",
+  "accuracy_type": "accurate",
+  "category": "需要调用图分析",
+  "rule_description": "函数循环调用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_23_04",
+  "rule_name": "控制表达式逻辑错误",
+  "accuracy_type": "uncertain",
+  "category": "需要逻辑分析",
+  "rule_description": "控制表达式逻辑错误",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_23_05",
+  "rule_name": "外部输入作为循环跳出条件",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "外部输入作为循环跳出条件",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_27_01",
+  "rule_name": "污染数据用于内存空间大小",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据用于内存空间大小",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_27_03",
+  "rule_name": "污染数据用于循环控制条件",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据用于循环控制条件",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_27_05",
+  "rule_name": "污染数据传递不合适的函数指针",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据传递不合适的函数指针",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_27_07",
+  "rule_name": "污染数据用于输入输出函数的格式化字符串参数",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据用于输入输出函数的格式化字符串参数",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_27_08",
+  "rule_name": "污染数据未经保护的访问",
+  "accuracy_type": "uncertain",
+  "category": "污点分析",
+  "rule_description": "污染数据未经保护的访问",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_30_03",
+  "rule_name": "可能被赋值为NULL的指针发生空指针解引用",
+  "accuracy_type": "uncertain",
+  "category": "空指针分析",
+  "rule_description": "可能被赋值为NULL的指针发生空指针解引用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_30_06",
+  "rule_name": "指针解引用前未判空",
+  "accuracy_type": "accurate",
+  "category": "空指针分析",
+  "rule_description": "指针解引用前未判空",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_30_07",
+  "rule_name": "可疑的空指针解引用",
+  "accuracy_type": "uncertain",
+  "category": "可能误报",
+  "rule_description": "可疑的空指针解引用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_31_01",
+  "rule_name": "管道可能被覆盖",
+  "accuracy_type": "uncertain",
+  "category": "需要资源分析",
+  "rule_description": "管道可能被覆盖",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_33_02",
+  "rule_name": "加锁后未解锁",
+  "accuracy_type": "uncertain",
+  "category": "需要资源追踪",
+  "rule_description": "加锁后未解锁",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_33_03",
+  "rule_name": "线程死锁",
+  "accuracy_type": "uncertain",
+  "category": "需要锁顺序分析",
+  "rule_description": "线程死锁",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_33_04",
+  "rule_name": "禁止中断函数和外部函数同时对同一对象使用写操作",
+  "accuracy_type": "accurate",
+  "category": "并发分析",
+  "rule_description": "禁止中断函数和外部函数同时对同一对象使用写操作",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_34_01",
+  "rule_name": "套接字操作接收后未关闭",
+  "accuracy_type": "accurate",
+  "category": "资源泄漏",
+  "rule_description": "套接字操作接收后未关闭",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_34_02",
+  "rule_name": "资源使用后未释放",
+  "accuracy_type": "accurate",
+  "category": "资源泄漏",
+  "rule_description": "资源使用后未释放",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_34_04",
+  "rule_name": "文件句柄使用后未释放",
+  "accuracy_type": "accurate",
+  "category": "资源泄漏",
+  "rule_description": "文件句柄使用后未释放",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_36_01",
+  "rule_name": "返回值未测试",
+  "accuracy_type": "accurate",
+  "category": "需要返回值检查",
+  "rule_description": "返回值未测试",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_36_02",
+  "rule_name": "用户函数返回值未测试",
+  "accuracy_type": "accurate",
+  "category": "需要返回值检查",
+  "rule_description": "用户函数返回值未测试",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_40_02",
+  "rule_name": "资源释放后继续使用",
+  "accuracy_type": "accurate",
+  "category": "Use-after-free",
+  "rule_description": "资源释放后继续使用",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_03",
+  "rule_name": "一般的整数溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出",
+  "rule_description": "一般的整数溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_03_97",
+  "rule_name": "无符号数加减法导致的溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出",
+  "rule_description": "无符号数加减法导致的溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_03_98",
+  "rule_name": "负最值取反导致溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出",
+  "rule_description": "负最值取反导致溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_03_99",
+  "rule_name": "状态变量累加导致溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出",
+  "rule_description": "状态变量累加导致溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_41_04",
+  "rule_name": "有符号整型数溢出",
+  "accuracy_type": "uncertain",
+  "category": "整数溢出",
+  "rule_description": "有符号整型数溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_43_01",
+  "rule_name": "SQL注入",
+  "accuracy_type": "accurate",
+  "category": "污点分析",
+  "rule_description": "SQL注入",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_43_02",
+  "rule_name": "命令行注入",
+  "accuracy_type": "accurate",
+  "category": "污点分析",
+  "rule_description": "命令行注入",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_01",
+  "rule_name": "日志泄漏信息",
+  "accuracy_type": "accurate",
+  "category": "需要敏感信息分析",
+  "rule_description": "日志泄漏信息",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_02",
+  "rule_name": "内核错误信息泄漏信息",
+  "accuracy_type": "accurate",
+  "category": "需要敏感信息分析",
+  "rule_description": "内核错误信息泄漏信息",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_04",
+  "rule_name": "通过注释暴露敏感信息",
+  "accuracy_type": "accurate",
+  "category": "需要注释分析",
+  "rule_description": "通过注释暴露敏感信息",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_05",
+  "rule_name": "敏感数据存储于没有锁上的内存空间",
+  "accuracy_type": "accurate",
+  "category": "需要安全分析",
+  "rule_description": "敏感数据存储于没有锁上的内存空间",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_06",
+  "rule_name": "端口存在多个绑定",
+  "accuracy_type": "accurate",
+  "category": "需要配置分析",
+  "rule_description": "端口存在多个绑定",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_07",
+  "rule_name": "未验证的密码改变",
+  "accuracy_type": "accurate",
+  "category": "需要验证流程分析",
+  "rule_description": "未验证的密码改变",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_44_08",
+  "rule_name": "通过环境变量泄漏信息",
+  "accuracy_type": "accurate",
+  "category": "需要环境变量分析",
+  "rule_description": "通过环境变量泄漏信息",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_46_01",
+  "rule_name": "通过相对路径遍历",
+  "accuracy_type": "accurate",
+  "category": "路径遍历，污点分析",
+  "rule_description": "通过相对路径遍历",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_46_02",
+  "rule_name": "通过绝对路径遍历",
+  "accuracy_type": "accurate",
+  "category": "路径遍历，污点分析",
+  "rule_description": "通过绝对路径遍历",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_46_03",
+  "rule_name": "LDAP注入",
+  "accuracy_type": "accurate",
+  "category": "污点分析",
+  "rule_description": "LDAP注入",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_46_05",
+  "rule_name": "不可信的搜索路径",
+  "accuracy_type": "accurate",
+  "category": "需要路径分析",
+  "rule_description": "不可信的搜索路径",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_47_01",
+  "rule_name": "外部控制用于系统或参数设置",
+  "accuracy_type": "accurate",
+  "category": "污点分析",
+  "rule_description": "外部控制用于系统或参数设置",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_47_03",
+  "rule_name": "明文传输敏感数据",
+  "accuracy_type": "accurate",
+  "category": "需要传输分析",
+  "rule_description": "明文传输敏感数据",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_48_04",
+  "rule_name": "在释放前未清除敏感信息",
+  "accuracy_type": "accurate",
+  "category": "需要敏感数据追踪",
+  "rule_description": "在释放前未清除敏感信息",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_50_01",
+  "rule_name": "信号处理例程中的竞争条件",
+  "accuracy_type": "uncertain",
+  "category": "并发分析",
+  "rule_description": "信号处理例程中的竞争条件",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_50_03",
+  "rule_name": "检查时间与使用时间的竞争条件",
+  "accuracy_type": "accurate",
+  "category": "TOCTOU，并发分析",
+  "rule_description": "检查时间与使用时间的竞争条件",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_51_01",
+  "rule_name": "栈缓冲区溢出",
+  "accuracy_type": "uncertain",
+  "category": "缓冲区溢出",
+  "rule_description": "栈缓冲区溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_51_02",
+  "rule_name": "堆缓冲区溢出",
+  "accuracy_type": "uncertain",
+  "category": "缓冲区溢出",
+  "rule_description": "堆缓冲区溢出",
+  "keywords": []
+ },
+ {
+  "rule_code": "S_60_01",
+  "rule_name": "缓冲区溢出漏洞",
+  "accuracy_type": "uncertain",
+  "category": "缓冲区溢出",
+  "rule_description": "缓冲区溢出漏洞",
+  "keywords": []
+ }
+]

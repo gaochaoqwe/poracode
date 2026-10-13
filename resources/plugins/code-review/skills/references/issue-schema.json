@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CodeReviewReport",
+  "type": "object",
+  "required": ["kind", "version", "mode", "problems"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "code-review-report" },
+    "version": { "const": 1 },
+    "mode": { "enum": ["function", "chain", "feature"] },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "project": { "type": "string", "minLength": 1 },
+        "rootDir": { "type": "string", "minLength": 1 },
+        "files": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "problems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "file_name", "issue_level", "issue_name", "description_location"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "file_name": { "type": "string", "minLength": 1 },
+          "function_name": { "type": "string", "minLength": 1 },
+          "feature_id": {
+            "description": "该问题所属的功能模块 id（对应 features[].id）。链路 / 功能审查填写后，前端「功能模块列表 / 功能列表」选中某项时能精确收敛到该模块的问题；不填则退化为按审查任务收敛。",
+            "type": "string",
+            "minLength": 1
+          },
+          "source_code": { "type": "string", "minLength": 1 },
+          "problem_reason": { "type": "string", "minLength": 1 },
+          "issue_level": { "enum": ["一般问题", "重要问题"] },
+          "issue_name": { "type": "string", "minLength": 1 },
+          "issue_location": { "type": "string", "minLength": 1 },
+          "description_requirement": { "type": "string", "minLength": 1 },
+          "description_issue": { "type": "string", "minLength": 1 },
+          "description_location": { "type": "string", "minLength": 1 },
+          "description_impact": { "type": "string", "minLength": 1 },
+          "affected_functions": {
+            "description": "涉及函数（链路 / 功能审查里跨多个函数时，用顿号或逗号分隔的函数名列表）。",
+            "type": "string"
+          },
+          "related": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+          "evidence": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "features": {
+      "description": "功能模块。链路审查 = 按需求章节划分的功能模块树（用 sub_features 嵌套）；功能审查 = 被审查的功能清单（平铺）。函数审查不需要本字段。",
+      "type": "array",
+      "items": { "$ref": "#/$defs/featureNode" }
+    },
+    "callgraph": {
+      "description": "链路审查可选：链路涉及文件 / 函数的调用关系（来自索引，不得编造）。提供了才会在「调用关系」标签页画出调用图；未提供时该页展示按 chain_order 还原的链路顺序。",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "label": { "type": "string", "minLength": 1 },
+              "type": { "enum": ["file", "function"] },
+              "file": { "type": "string" }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "additionalProperties": false,
+            "properties": {
+              "from": { "type": "string", "minLength": 1 },
+              "to": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "function_info": {
+      "description": "函数信息。单函数报告为对象；批量/聚合报告为数组（每个被审函数一条）。函数审查场景必须始终提供，即使 problems 为空。",
+      "oneOf": [
+        { "$ref": "#/$defs/functionInfo" },
+        { "type": "array", "items": { "$ref": "#/$defs/functionInfo" } }
+      ]
+    }
+  },
+  "$defs": {
+    "functionInfo": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "function_name": { "type": "string", "minLength": 1 },
+        "file_name": {
+          "description": "该函数所在文件（与 problems[].file_name 同口径）。填写后前端会把函数挂到左侧目录树的对应文件节点下，函数即使没有问题也能看到；不填则只能从问题里回推文件。",
+          "type": "string",
+          "minLength": 1
+        },
+        "function_description": {
+          "description": "函数功能概述（简洁说明该函数做什么）。允许为空串——为空时前端仍会渲染概述区块并显示空态占位。",
+          "type": "string"
+        },
+        "commented_code": { "type": "string" }
+      }
+    },
+    "featureNode": {
+      "type": "object",
+      "required": ["id", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "功能模块稳定 id，problems[].feature_id 引用它。",
+          "type": "string",
+          "minLength": 1
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "section": {
+          "description": "章节号（链路审查按需求文档章节划分功能模块时使用，如 \"3.2\"）。",
+          "type": "string"
+        },
+        "description": {
+          "description": "功能介绍 / 功能描述。链路审查是 AI 生成的功能说明；功能审查用用户给出的功能描述。渲染在第四栏「功能介绍」区块。",
+          "type": "string"
+        },
+        "entry_function": {
+          "description": "功能入口函数（如 main 或该功能的入口）。",
+          "type": "string"
+        },
+        "status": {
+          "description": "审查状态（功能列表的状态标签）。",
+          "enum": ["pending", "running", "done", "failed"]
+        },
+        "files": {
+          "description": "该功能模块涉及的文件（对齐 problems[].file_name，用于第二栏目录树高亮与实际收敛）。",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "functions": {
+          "description": "该功能模块涉及的函数名。",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "chain_order": {
+          "description": "链路顺序：函数名按调用先后排列（入口在前）。目录树会按它在函数节点上打 A/B/C 角标。",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "sub_features": {
+          "description": "子功能（链路审查的树形层级）。",
+          "type": "array",
+          "items": { "$ref": "#/$defs/featureNode" }
+        }
+      }
+    }
+  }
+}

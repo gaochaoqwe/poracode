@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gjb438c-ida",
+  "version": "1.0.0",
+  "description": "Generate a change impact-domain analysis report (影响域分析报告, .docx) from a fixed Word template using a strict fill engine. Bundles the impact analysis report template and the strict_word_filler engine.",
+  "author": {
+    "name": "GJB438C-DocSkill (adapted for AgentEmployee)",
+    "url": "https://gitlink.org.cn/chenpeng0206/GJB_438C"
+  },
+  "homepage": "https://gitlink.org.cn/chenpeng0206/GJB_438C",
+  "repository": "https://gitlink.org.cn/chenpeng0206/GJB_438C",
+  "license": "MulanPSL-2.0",
+  "keywords": ["impact-analysis", "change", "docx", "ida", "military-standard"],
+  "extensions": {
+    "com.agentemployee.client": {
+      "title": "GJB 438C IDA",
+      "category": "productivity",
+      "featured": false,
+      "examplePrompt": "对比变更前与当前版本代码，按固定模板生成一份影响域分析报告，输出 .docx",
+      "coreSkill": "gjb438c-ida",
+      "skills": {
+        "gjb438c-ida": {
+          "name": "GJB 438C IDA",
+          "description": "对比变更前与当前版本代码，按固定模板生成影响域分析报告 .docx（严格模式，只填内容不改结构）。"
+        }
+      }
+    }
+  }
+}
