@@ -3,10 +3,18 @@
  *
  * 顶层分三大类：测试项目 / 开发项目 / 办公项目，各类下分年份目录。
  *
- * - 测试项目：`<年>/<状态目录>/<软件类型>[/<子类>]/<项目名>/P0~P14`
- *   - 状态目录：未开展 / 进行中 / 已完成
- *   - 软件类型十类：一~八类下再分子类（1光雷/2吊舱/3转塔/4告警/5地防），
- *     九外部测试、十搜潜直接按项目名分层。
+ * - 测试项目（三态结构不同）：
+ *   - 未开展：`<年>/未开展/<项目名>/`，不按软件类型分层，直接按项目名；
+ *     项目文件夹内含测试主管准备的 `1组织资产 / 2参考项目资料 / 3本项目资料`
+ *     三个文件夹（见 `UNSTARTED_PROJECT_DIRS`）。
+ *   - 进行中：`<年>/进行中/<项目名>/`，同样直接按项目名分层；项目内部按
+ *     P0~P14 建子目录（P0-测试申请文件 内含 组织资产/参考资料/本项目资料，
+ *     见 `P0_APPLICATION_DIRS`）。
+ *   - 已完成：`<年>/已完成/<软件类型>[/<子类>]/<项目名>/`，先按软件类型分、
+ *     再按产品（子类）分、最后按项目名分；项目文件夹内含
+ *     `1测试申请文件 / 2测试过程文件 / 3测试结果文件`（见
+ *     `COMPLETED_PROJECT_DIRS`）。一~八类下再分子类（一光雷/二吊舱/三转塔/
+ *     四告警/五地防），九外部测试、十搜潜直接按项目名分层。
  * - 开发项目：`<年>/<项目名>`，无状态层、无 P 流程。
  * - 办公项目：`<年>/<状态目录>/<分类>/`，分类如 分类1（中心项目）等。
  *
@@ -35,24 +43,42 @@ export interface TestProjectType {
 }
 
 export const TEST_PROJECT_TYPES: readonly TestProjectType[] = [
-  { name: "一系统控制类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "二随动控制类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "三图像处理类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "四温补调焦类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "五激光类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "六红外类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "七手柄类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
-  { name: "八分色滤光类", subTypes: ["1光雷", "2吊舱", "3转塔", "4告警", "5地防"] },
+  { name: "一系统控制类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "二随动控制类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "三图像处理类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "四温补调焦类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "五激光类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "六红外类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "七手柄类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
+  { name: "八分色滤光类", subTypes: ["一光雷", "二吊舱", "三转塔", "四告警", "五地防"] },
   { name: "九外部测试", subTypes: [] },
   { name: "十搜潜", subTypes: [] },
 ];
 
+/** 一~八类的五个产品子类目录名（汉语大写数字，与软件类型「一~八类」写法一致）。 */
 export const TEST_PROJECT_SUB_TYPES: readonly string[] = [
-  "1光雷",
-  "2吊舱",
-  "3转塔",
-  "4告警",
-  "5地防",
+  "一光雷",
+  "二吊舱",
+  "三转塔",
+  "四告警",
+  "五地防",
+];
+
+/** 未开展项目的准备文件夹（测试主管在项目开始前准备）：`1组织资产 / 2参考项目资料 / 3本项目资料`。 */
+export const UNSTARTED_PROJECT_DIRS: readonly string[] = [
+  "1组织资产",
+  "2参考项目资料",
+  "3本项目资料",
+];
+
+/** P0-测试申请文件 内含的三个子目录。 */
+export const P0_APPLICATION_DIRS: readonly string[] = ["组织资产", "参考资料", "本项目资料"];
+
+/** 已完成项目文件夹内含的三个文件夹。 */
+export const COMPLETED_PROJECT_DIRS: readonly string[] = [
+  "1测试申请文件",
+  "2测试过程文件",
+  "3测试结果文件",
 ];
 
 /** 办公项目分类目录名 */
@@ -97,7 +123,10 @@ export function testProjectStateDir(
   return join([fsRoot, "测试项目", year, state]);
 }
 
-/** 测试项目类型目录（一~八类类型层或九/十类项目层）：`.../<状态>/<类型>`。 */
+/**
+ * 测试项目类型目录（仅「已完成」使用）：`已完成/<类型>`。
+ * 未开展 / 进行中 不按软件类型分层，本函数不适用。
+ */
 export function testProjectTypeDir(
   fsRoot: string,
   year: string,
@@ -107,7 +136,10 @@ export function testProjectTypeDir(
   return join([fsRoot, "测试项目", year, state, typeName]);
 }
 
-/** 测试项目子类目录：`.../<类型>/<子类>`。 */
+/**
+ * 测试项目子类目录（仅「已完成」使用）：`已完成/<类型>/<子类>`。
+ * 未开展 / 进行中 不按软件类型分层，本函数不适用。
+ */
 export function testProjectSubTypeDir(
   fsRoot: string,
   year: string,
@@ -119,8 +151,11 @@ export function testProjectSubTypeDir(
 }
 
 /**
- * 测试项目目录：`测试项目/<年>/<状态>/<类型>[/<子类>]/<项目名>`。
- * 一~八类带子类层；九、十类不带。
+ * 测试项目目录：
+ * - 未开展 / 进行中：`测试项目/<年>/<状态>/<项目名>`（不按软件类型分层，
+ *   `typeName` / `subType` 参数被忽略）；
+ * - 已完成：`测试项目/<年>/已完成/<类型>[/<子类>]/<项目名>`，
+ *   一~八类带子类层；九、十类不带。
  */
 export function testProjectDir(
   fsRoot: string,
@@ -130,8 +165,11 @@ export function testProjectDir(
   projectName: string,
   subType?: string,
 ): string {
-  const typePart = testTypeHasSubTypes(typeName) && subType ? `${typeName}/${subType}` : typeName;
-  return join([fsRoot, "测试项目", year, state, typePart, projectName]);
+  if (state === "已完成") {
+    const typePart = testTypeHasSubTypes(typeName) && subType ? `${typeName}/${subType}` : typeName;
+    return join([fsRoot, "测试项目", year, state, typePart, projectName]);
+  }
+  return join([fsRoot, "测试项目", year, state, projectName]);
 }
 
 // ── 开发 / 办公项目路径构造 ────────────────────────────────────────
@@ -168,8 +206,9 @@ export interface ParsedTestProjectPath {
   fsRoot: string;
   year: string;
   state: ProjectLifecycleState;
-  typeName: string;
-  /** 一~八类时为子类名；九/十类为 undefined。 */
+  /** 仅「已完成」项目有软件类型；未开展/进行中为 undefined。 */
+  typeName?: string | undefined;
+  /** 仅「已完成」项目一~八类有子类；九/十类与未开展/进行中为 undefined。 */
   subType?: string | undefined;
   projectName: string;
 }
@@ -177,7 +216,8 @@ export interface ParsedTestProjectPath {
 /**
  * 解析测试项目目录路径。
  * 兼容 `/` 与 `\` 分隔符；`fsRoot` 可以是任意前缀（如 `E:/code/github/模拟公司电脑文件夹`）。
- * 要求路径形如 `<fsRoot>/测试项目/<年>/<状态>/<类型>[/<子类>]/<项目名>`。
+ * - 未开展 / 进行中：`<fsRoot>/测试项目/<年>/<状态>/<项目名>`（恰好一层项目名）；
+ * - 已完成：`<fsRoot>/测试项目/<年>/已完成/<类型>[/<子类>]/<项目名>`。
  * 非测试项目路径或结构不合法返回 null。
  */
 export function parseTestProjectPath(path: string): ParsedTestProjectPath | null {
@@ -188,32 +228,44 @@ export function parseTestProjectPath(path: string): ParsedTestProjectPath | null
   const markerIndex = segments.indexOf("测试项目");
   if (markerIndex < 0) return null;
   const after = segments.slice(markerIndex + 1);
-  if (after.length < 4) return null; // 年/状态/类型/项目名 至少 4 段
+  if (after.length < 3) return null; // 年/状态/项目名 至少 3 段
 
-  const [year, state, typeName, ...rest] = after;
-  if (!isProjectLifecycleState(state!)) return null;
-  if (!isTestProjectType(typeName!)) return null;
+  const [year, state, ...rest] = after as [string, string, ...string[]];
+  if (!isProjectLifecycleState(state)) return null;
 
-  if (testTypeHasSubTypes(typeName!)) {
+  if (state === "已完成") {
     if (rest.length < 2) return null;
-    const [subType, projectName] = rest as [string, string];
-    if (!isTestProjectSubType(subType)) return null;
+    const [typeName, ...tail] = rest as [string, ...string[]];
+    if (!isTestProjectType(typeName)) return null;
+    if (testTypeHasSubTypes(typeName)) {
+      if (tail.length !== 2) return null;
+      const [subType, projectName] = tail as [string, string];
+      if (!isTestProjectSubType(subType)) return null;
+      return {
+        fsRoot: segments.slice(0, markerIndex).join("/"),
+        year,
+        state,
+        typeName,
+        subType,
+        projectName,
+      };
+    }
+    if (tail.length !== 1) return null;
     return {
       fsRoot: segments.slice(0, markerIndex).join("/"),
-      year: year!,
+      year,
       state,
-      typeName: typeName!,
-      subType,
-      projectName,
+      typeName,
+      projectName: tail[0]!,
     };
   }
 
-  if (rest.length < 1) return null;
+  // 未开展 / 进行中：直接按项目名（恰好一层）
+  if (rest.length !== 1) return null;
   return {
     fsRoot: segments.slice(0, markerIndex).join("/"),
-    year: year!,
+    year,
     state,
-    typeName: typeName!,
     projectName: rest[0]!,
   };
 }

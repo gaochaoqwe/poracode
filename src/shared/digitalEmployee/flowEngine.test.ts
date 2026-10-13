@@ -9,7 +9,7 @@ import {
 } from "./flowEngine";
 import { nodeFolderName, TEST_FLOW_NODES } from "./flowTypes";
 
-const PROJECT_DIR = "E:/模拟/测试项目/2026/未开展/九外部测试/项目A";
+const PROJECT_DIR = "E:/模拟/测试项目/2026/进行中/项目A";
 
 /** 由条目名列表构造扫描结果（等价于 scanProjectFlow 的输出形态）。 */
 function scanFromEntries(entries: readonly string[]): NodeScan[] {

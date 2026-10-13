@@ -41,7 +41,7 @@ function fakeListDir(fs: FakeFs): ListDir {
 }
 
 const FS_ROOT = "E:\\fs";
-const PROJECT = join(FS_ROOT, "测试项目", "2026", "进行中", "一类", "1光雷", "示例项目");
+const PROJECT = join(FS_ROOT, "测试项目", "2026", "进行中", "示例项目-A配置项测试");
 
 /** 在内存 fs 中搭一个标准的「进行中」测试项目（P0 已完成，其余未开始）。 */
 function seedProjectWithP0Done(fs: FakeFs): void {
@@ -72,16 +72,16 @@ describe("discoverInProgressProjects", () => {
 
   it("只发现「进行中」的项目，排除已完成/未开展", () => {
     const fs: FakeFs = new Map();
-    // 进行中项目（含子类两层）
+    // 进行中项目（直接按项目名）
     seedProjectWithP0Done(fs);
-    // 直接位于软件类型下的进行中项目（无子类）
-    const flatProject = join(FS_ROOT, "测试项目", "2026", "进行中", "九外部测试", "外测项目");
+    // 另一个进行中项目（直接按项目名）
+    const flatProject = join(FS_ROOT, "测试项目", "2026", "进行中", "外测项目");
     addEntry(fs, flatProject, "[P0-测试申请文件-进行中]");
     // 已完成项目（不应出现）
-    const doneProject = join(FS_ROOT, "测试项目", "2026", "已完成", "一类", "1光雷", "旧项目");
+    const doneProject = join(FS_ROOT, "测试项目", "2026", "已完成", "一系统控制类", "一光雷", "旧项目");
     addEntry(fs, doneProject, "[P14-最终报告-已完成]");
     // 未开展项目（不应出现）
-    const todoProject = join(FS_ROOT, "测试项目", "2026", "未开展", "二类", "2吊舱", "新项目");
+    const todoProject = join(FS_ROOT, "测试项目", "2026", "未开展", "新项目");
     addEntry(fs, todoProject, "P0-测试申请文件");
     // 开发项目（不应出现）
     addEntry(fs, join(FS_ROOT, "开发项目", "2026", "AI软件测评-web版"), "README.md");
@@ -127,7 +127,7 @@ describe("planProject", () => {
     expect(plan.done).toBe(false);
   });
 
-  it("P0 已完成但项目主管正忙：P1 推导为 waiting（原地等待）", () => {
+  it("P0 已完成但测试项目主管正忙：P1 推导为 waiting（原地等待）", () => {
     const fs: FakeFs = new Map();
     addEntry(fs, PROJECT, "[P0-测试申请文件-已完成]");
     const plan = planProject(PROJECT, fakeListDir(fs), { "org-test-project-lead": true });
@@ -243,7 +243,7 @@ describe("FlowDriver", () => {
     expect(snapshot.dispatched).toEqual([]);
   });
 
-  it("P0 完成后定向唤醒项目主管，派发线程并记录 spawned", async () => {
+  it("P0 完成后定向唤醒测试项目主管，派发线程并记录 spawned", async () => {
     const fs: FakeFs = new Map();
     addEntry(fs, PROJECT, "[P0-测试申请文件-已完成]");
     const { driver, spawns } = makeDriver(fs);
