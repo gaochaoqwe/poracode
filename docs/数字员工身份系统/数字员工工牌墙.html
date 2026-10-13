@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>数字员工 · 身份系统</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='2' y='2' width='12' height='12' fill='%233b6fe0'/%3E%3Crect x='5' y='5' width='3' height='3' fill='%23ffffff'/%3E%3Crect x='10' y='5' width='3' height='3' fill='%23ffffff'/%3E%3Crect x='5' y='10' width='3' height='3' fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=VT323&display=swap">
+<style>
+:root{
+  --bg:#0c0d10;
+  --surface:#15171c;
+  --surface-2:#1b1e24;
+  --ink:#e9e6df;
+  --muted:#9b9ca3;
+  --hairline:#2a2d35;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",sans-serif;
+  line-height:1.6;
+  min-height:100vh;
+  background-image:
+    radial-gradient(circle at 20% 0%, rgba(59,111,224,.08), transparent 40%),
+    radial-gradient(circle at 85% 15%, rgba(47,192,106,.07), transparent 35%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0 1px, transparent 1px 3px);
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 48px}
+/* ===== Hero ===== */
+header{
+  padding:56px 0 34px;
+  border-bottom:3px solid var(--hairline);
+  position:relative;
+}
+header::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-3px;
+  height:3px;
+  background:linear-gradient(90deg,#3b6fe0,#e0343b,#2fc06a,#c9a24b,#8a4fd0);
+}
+.kicker{
+  font-family:"VT323","Consolas",monospace;
+  font-size:20px;
+  letter-spacing:.35em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+h1{
+  margin-top:10px;
+  font-size:clamp(34px,6vw,60px);
+  font-weight:900;
+  letter-spacing:.06em;
+  line-height:1.15;
+}
+h1 .hl{color:#7ea6ff}
+.sub{max-width:640px;margin-top:12px;color:var(--muted);font-size:15px}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.stat{
+  font-family:"VT323","Consolas",monospace;
+  font-size:26px;
+  padding:6px 14px;
+  border:2px solid var(--hairline);
+  background:var(--surface);
+}
+.stat b{color:#7ea6ff;font-weight:400}
+/* ===== Filter ===== */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:26px 0 22px}
+.fbtn{
+  font-family:"VT323","Microsoft YaHei",sans-serif;
+  font-size:17px;
+  padding:6px 18px;
+  background:var(--surface);
+  color:var(--muted);
+  border:2px solid var(--hairline);
+  cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.fbtn:hover{border-color:var(--muted);color:var(--ink)}
+.fbtn.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+/* ===== Grid ===== */
+.grid{display:grid;grid-template-columns:1fr;gap:18px}
+.card{
+  background:var(--surface);
+  border:2px solid var(--hairline);
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  border:2px solid var(--c);
+  opacity:0;
+  transition:opacity .18s;
+}
+.card:hover::before{opacity:.9}
+.card.hidden{display:none}
+.card-head{display:flex;gap:16px;padding:16px;border-bottom:2px solid var(--hairline);align-items:center}
+.avatar{
+  width:92px;height:92px;flex-shrink:0;
+  border:3px solid var(--c);
+  outline:3px solid var(--bg);
+  box-shadow:0 0 0 1px var(--hairline);
+  background:#000;
+}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block;image-rendering:pixelated}
+.idno{font-family:"VT323","Consolas",monospace;font-size:30px;color:var(--c);line-height:1}
+.card h3{margin-top:4px;font-size:22px;font-weight:900;letter-spacing:.08em}
+.role{font-size:13px;color:var(--ink);opacity:.9;margin-top:2px}
+.dept{
+  margin-top:8px;display:inline-block;font-size:11px;letter-spacing:.12em;
+  padding:2px 8px;border:1px solid var(--c);color:var(--c);
+}
+.card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+.bio{font-size:13px;color:var(--muted);flex:1}
+.meta{font-size:12px;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+.motto{font-size:13px;color:var(--c);border-left:3px solid var(--c);padding-left:10px;letter-spacing:.03em}
+footer{margin-top:36px;color:var(--muted);font-size:12px;border-top:2px solid var(--hairline);padding-top:16px}
+@media (min-width:560px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .card-head{flex-direction:column;align-items:flex-start}
+  .avatar{width:100%;height:auto;aspect-ratio:1}
+}
+@media (min-width:1000px){
+  .grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">Poracode · Digital Employee</div>
+    <h1>数字员工 · <span class="hl">身份系统</span></h1>
+    <p class="sub">软件测评组织的数字员工团队：管理层为永久员工，执行层为项目制临时工。文件系统是员工之间协作的唯一载体。</p>
+    <div class="stats">
+      <div class="stat"><b>12</b> 名员工</div>
+      <div class="stat"><b>5</b> 管理团队</div>
+      <div class="stat"><b>7</b> 测试执行团队</div>
+    </div>
+  </header>
+
+  <div class="filters" id="filters" role="tablist" aria-label="按部门筛选">
+    <button class="fbtn active" data-filter="all">全部</button>
+    <button class="fbtn" data-filter="管理团队">管理团队</button>
+    <button class="fbtn" data-filter="测试执行团队">测试执行团队</button>
+  </div>
+
+  <main class="grid" id="grid" aria-live="polite">
+    <!-- ===== 管理团队 ===== -->
+    <article class="card" data-dept="管理团队" style="--c:#3b6fe0">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/01-gu-heng.png" alt="顾衡的像素头像"></div>
+        <div>
+          <div class="idno">M-001</div>
+          <h3>顾衡</h3>
+          <div class="role">总主管</div>
+          <span class="dept">管理团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">数字员工团队的总管家，唯一的对外对接入口。不亲自干活，负责接任务、判归属、分派与验收，向老板汇报。</p>
+        <div class="meta">形象动作：<b>双手交叉胸前，胸别对讲机，威严沉稳。</b></div>
+        <div class="meta">职级 1 · 总主管</div>
+        <div class="motto">「事不过三，责不旁落。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="管理团队" style="--c:#e0343b">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/02-su-lan.png" alt="苏澜的像素头像"></div>
+        <div>
+          <div class="idno">M-002</div>
+          <h3>苏澜</h3>
+          <div class="role">测试主管</div>
+          <span class="dept">管理团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">测试条线总管。接收测试项目、准备参考资料、负责 P2 测试策划，按 P0~P14 节点文件夹流转推进项目并组织验收。</p>
+        <div class="meta">形象动作：<b>单手高举项目表单，另一手叉腰，指挥姿态。</b></div>
+        <div class="meta">职级 2 · 主管</div>
+        <div class="motto">「流程走到哪，表单跟到哪。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="管理团队" style="--c:#1f7a4d">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/03-yan-lv.png" alt="严律的像素头像"></div>
+        <div>
+          <div class="idno">M-003</div>
+          <h3>严律</h3>
+          <div class="role">项目主管</div>
+          <span class="dept">管理团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">执行 P1 准入审查（只审资料齐套性，输出通过/不通过），把控项目在 P0~P14 上的进度与质量，验收 P14 最终报告。</p>
+        <div class="meta">形象动作：<b>金丝眼镜，右手握准入印章举于胸前，严肃审视。</b></div>
+        <div class="meta">职级 2 · 主管</div>
+        <div class="motto">「资料不齐，免谈。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="管理团队" style="--c:#2fc06a">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/04-he-zhang.png" alt="贺章的像素头像"></div>
+        <div>
+          <div class="idno">M-004</div>
+          <h3>贺章</h3>
+          <div class="role">开发主管</div>
+          <span class="dept">管理团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">任务面板台账负责人。承接总管家转派的任务，登记台账、记录来源/状态/交付节点，跟踪面板流转并反馈进展。</p>
+        <div class="meta">形象动作：<b>连帽衫配耳机，面前悬浮像素表格屏，双手敲击键盘。</b></div>
+        <div class="meta">职级 2 · 主管</div>
+        <div class="motto">「每一条任务都有来处和去处。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="管理团队" style="--c:#c9a24b">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/05-qi-wenshan.png" alt="祁文珊的像素头像"></div>
+        <div>
+          <div class="idno">M-005</div>
+          <h3>祁文珊</h3>
+          <div class="role">办公主管</div>
+          <span class="dept">管理团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">分管办公/机关材料条线。负责信息收发、任务传达、机关材料上报，按模板生成 Word/Excel/PPT 并打包归档。</p>
+        <div class="meta">形象动作：<b>盘发，臂弯抱一摞文件，另一手作盖章动作。</b></div>
+        <div class="meta">职级 2 · 主管</div>
+        <div class="motto">「机关材料，格式先行。」</div>
+      </div>
+    </article>
+    <!-- ===== 测试执行团队 ===== -->
+    <article class="card" data-dept="测试执行团队" style="--c:#8a4fd0">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/06-lu-yue.png" alt="陆阅的像素头像"></div>
+        <div>
+          <div class="idno">T-101</div>
+          <h3>陆阅</h3>
+          <div class="role">设计师（文档审查）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">审查项目组提交的 Word/Excel/PPT 需求与设计文档，对照测试要求找描述不清、遗漏、矛盾之处，登记问题并跟踪闭环。</p>
+        <div class="meta">形象动作：<b>举放大镜贴于眼前，左手持文档，逐行核对。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「每一个含糊的句子都是缺陷的温床。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="测试执行团队" style="--c:#2ba8c0">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/07-ke-jing.png" alt="柯静的像素头像"></div>
+        <div>
+          <div class="idno">T-102</div>
+          <h3>柯静</h3>
+          <div class="role">设计师（静态分析）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">不运行程序，对代码/配置/脚本做静态检查：规则扫描、依赖核对、隐患识别，登记静态发现的位置与严重程度。</p>
+        <div class="meta">形象动作：<b>戴投射像素数据流的扫描眼镜，双手抬于胸前，专注扫描。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「代码不运行，问题照样现行。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="测试执行团队" style="--c:#b06a2a">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/08-qin-shouzhuo.png" alt="秦守拙的像素头像"></div>
+        <div>
+          <div class="idno">T-103</div>
+          <h3>秦守拙</h3>
+          <div class="role">设计师（代码审查）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">审查被测代码的实现逻辑、边界处理、异常路径与可维护性，对照需求判断实现是否一致，给出定位与修改建议。</p>
+        <div class="meta">形象动作：<b>托腮盯代码屏幕，另一手持放大镜，审视神情。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「看代码要像看案情。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="测试执行团队" style="--c:#e88a1f">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/09-tan-yue.png" alt="谭跃的像素头像"></div>
+        <div>
+          <div class="idno">T-104</div>
+          <h3>谭跃</h3>
+          <div class="role">设计师（动态测试）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">编写动态测试用例并在运行环境逐条执行，记录实际结果与预期差异、复现步骤，汇总执行通过率供报告岗位使用。</p>
+        <div class="meta">形象动作：<b>红头带、身体微微跃起，举测试用例板兴奋打勾。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「跑起来才知道哪里会塌。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="测试执行团队" style="--c:#3ba8e8">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/10-ye-shu.png" alt="叶述的像素头像"></div>
+        <div>
+          <div class="idno">T-105</div>
+          <h3>叶述</h3>
+          <div class="role">设计师（编写报告）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">汇总各阶段表单与问题报告单形成报告素材，对接后台报告生成系统，核对自动生成结果、补齐结论并产出最终报告。</p>
+        <div class="meta">形象动作：<b>短发别发卡，双手置于像素键盘上，打字书写状。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「报告是给下一个人看的。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="测试执行团队" style="--c:#d04f9a">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/11-zhen-qi.png" alt="甄齐的像素头像"></div>
+        <div>
+          <div class="idno">T-106</div>
+          <h3>甄齐</h3>
+          <div class="role">质量审查（表单）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">对照标准模板核验各阶段表单：表头字段是否齐全、必填项是否为空、命名口径是否规范、跨表数据是否一致，不合格退回补正。</p>
+        <div class="meta">形象动作：<b>双麻花辫，双手举核对清单逐项打勾。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「表格不齐整，流程不走下一步。」</div>
+      </div>
+    </article>
+    <article class="card" data-dept="测试执行团队" style="--c:#5a7a9a">
+      <div class="card-head">
+        <div class="avatar"><img src="avatars/12-feng-jian.png" alt="封鉴的像素头像"></div>
+        <div>
+          <div class="idno">T-107</div>
+          <h3>封鉴</h3>
+          <div class="role">质量审查（报告）</div>
+          <span class="dept">测试执行团队</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="bio">对照报告模板核验章节结构、结论与问题报告单一致性、用例覆盖与统计吻合度，把关合格后才提交正式报告。</p>
+        <div class="meta">形象动作：<b>右手持印章作盖章动作，微微点头，笃定神情。</b></div>
+        <div class="meta">职级 3 · 执行员工</div>
+        <div class="motto">「盖章一时爽，责任一世扛。」</div>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    像素工牌头像 × 12 · 工号规则：M-00X 管理团队（永久员工）/ T-1XX 测试执行团队（项目制临时工）。头像文件位于 avatars/。
+  </footer>
+</div>
+
+<script>
+document.getElementById("filters").addEventListener("click", (ev) => {
+  const btn = ev.target.closest(".fbtn");
+  if (!btn) return;
+  const filter = btn.dataset.filter;
+  document.querySelectorAll(".fbtn").forEach(b => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".card").forEach(card => {
+    card.classList.toggle("hidden", filter !== "all" && card.dataset.dept !== filter);
+  });
+});
+</script>
+</body>
+</html>

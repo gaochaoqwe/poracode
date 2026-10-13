@@ -72,6 +72,10 @@ resources/officecli/
 out_dump.txt
 typecheck-final-dsh.log
 
+# === 设计过程文件与自检截图（不入库） ===
+.creative-design/
+_shots/
+
 # === 个人工作文档（不入库） ===
 岗位能力缺口清单.md
 工作计划清单.xlsx
