@@ -43,6 +43,7 @@ export {
   type AgentStatusSupervisorEvent,
   type BrowserEvent,
   type EmployeeQueueSnapshotEvent,
+  type FlowDriverSnapshotEvent,
   type PrWatchMergedEvent,
   type PrWatchStatusEvent,
   type ProjectStateChangedEvent,

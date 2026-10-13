@@ -8,6 +8,7 @@ logs/
 *.tsbuildinfo
 build/icon-trimmed.png
 build/icons/
+.npmrc
 # heroui-agents-md
 .heroui-docs/
 .tmp/

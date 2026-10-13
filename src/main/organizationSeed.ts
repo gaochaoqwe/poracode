@@ -1,5 +1,6 @@
 import { nextWorkspaceIconId, type TeamDispatchPolicy, type Workspace } from "@/shared/contracts";
 import type { SharedSettings } from "@/shared/settings";
+import { SIMULATED_FS_ROOT } from "@/shared/digitalEmployee/flowLayout";
 
 /**
  * The one-time fixed-organization seed. The user confirmed a concrete two-level
@@ -25,10 +26,16 @@ import type { SharedSettings } from "@/shared/settings";
  * v7 = reorganize under teams: management team (chief/test-lead/dev-lead/oa) +
  * test-execution team, all hanging under the 软件测试岗 container; v8 = redefine
  * per-role responsibilities (sheet ownership) with text-level migration.
+ * v9 = digital-employee file-system flow alignment: the project lead joins the
+ * management team as a permanent employee (rank 2, P1 admission review + P14
+ * final-report acceptance), the test lead gains the pre-project reference
+ * preparation duty (组织资产/参考资料 into P0), all workspace paths point at the
+ * simulated company file system (`模拟公司电脑文件夹`) instead of `D:\Org`, and
+ * the execution team is the P-node workforce (7 roles, per-project release).
  * Bump whenever the tree changes in a way that must re-apply / migrate existing
  * installs.
  */
-export const ORGANIZATION_SEED_VERSION = 8;
+export const ORGANIZATION_SEED_VERSION = 9;
 
 /**
  * A universal, non-optional baseline skill every employee must carry (authorized
@@ -166,7 +173,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\00-总主管"],
+      workspacePaths: [SIMULATED_FS_ROOT],
     },
   },
   {
@@ -176,8 +183,19 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     parentContainerKey: "test",
     teamId: "mgmt-team",
     persona:
+      "你是测试主管，挂在软件测试岗之下，分管测试条线，管理所有测试项目，作为永久员工常驻。测试项目从 jprjcp（OA 里的测试项目模块）提过来，放入模拟公司电脑文件夹「测试项目/<年>/未开展」目录。项目开始前你先准备项目参考资料（组织资产、其他项目资料等），放入项目 P0-测试申请文件 的 组织资产/参考资料 子目录，供后续各节点员工参考；然后把项目从「未开展」移入「进行中」启动流水线。你负责 P2 测试策划：登记项目基本信息并制定测试策划，输出「XXX配置项/配置项回归测试表单」到 P2 节点文件夹（版本号随项目，不固定）。之后按 P0~P14 节点文件夹流转规则推进项目：每个节点文件夹带「[节点-状态]」状态前缀，各节点员工只操作自己的节点文件夹，你负责推进流转、组织执行与验收。你还要组建并带领执行层团队（文档审查、静态分析、代码审查、动态测试、报告编写、质量审查）执行验收，在流程末端触发后台报告生成系统产出报告，并把测试策划整理成办公材料向项目组汇报。",
+    previousPersona:
       "你是测试主管，挂在软件测试岗之下，分管测试条线，管理所有测试项目。测试项目从 jprjcp（OA 里的测试项目模块）提过来。你负责测试策划：在总 Excel 测试表单的项目信息表+策划表 sheet 中登记项目基本信息并制定测试策划；然后按测评中心流水线逐步推进项目，在流水线不同步骤选择总 Excel 测试表单的对应 sheet 导入（项目信息表+策划表→测试策划阶段、需求分析表→需求分析步骤、用例表→动态测试、问题报告单→各阶段问题汇集）。流水线只是管理项目走流程的工具，它不辅助测试、本身不是测试工具，但流程的最后一步会触发后台报告生成系统自动生成报告。你还要组建并带领 8 人测试团队（1 名项目主管、5 名测试执行设计师、2 名质量审查）执行验收，并把测试策划整理成办公材料向项目组汇报。",
     responsibilities: [
+      "从 jprjcp 接收测试项目，放入「测试项目/<年>/未开展」目录",
+      "项目开始前准备项目参考资料（组织资产/其他项目资料）到 P0-测试申请文件，供各节点员工参考",
+      "把项目从「未开展」移入「进行中」启动流水线",
+      "负责 P2 测试策划，输出测试表单到 P2 节点文件夹",
+      "按 P0~P14 节点文件夹流转推进项目，组织执行与验收",
+      "在流程末端触发后台报告生成系统产出报告",
+      "把测试策划整理成材料向项目组汇报",
+    ],
+    previousResponsibilities: [
       "从 jprjcp 接收测试项目并登记到总 Excel 项目信息表+策划表",
       "负责测试策划并在策划表 sheet 中落档",
       "按测评中心流水线逐步推进，各步骤导入对应 sheet",
@@ -199,7 +217,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\10-测试主管"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -229,31 +247,34 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\12-开发主管"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\开发项目`],
     },
   },
   {
     id: "org-test-project-lead",
-    name: "测试项目主管",
-    previousNames: ["项目主管"],
-    roleRank: 3,
+    name: "项目主管",
+    previousNames: ["测试项目主管", "项目主管"],
+    roleRank: 2,
     parentContainerKey: "test",
-    teamId: "org-test-team",
+    teamId: "mgmt-team",
     persona:
+      "你是项目主管，挂在软件测试岗的管理团队之下，是测试主管（org-test-lead）的直接下属，作为永久员工常驻。你负责 P1 准入审查：只审查资料齐套性——配置项测试需需求规格说明+代码，回归测试需影响域分析报告+变更前后两版代码，输出 通过/不通过，审查结论写入 P1 节点文件夹。你还把控测试项目的进度与质量：跟踪每个项目在 P0~P14 节点文件夹上的流转位置，对照测试策划检查各环节产出是否按时按质完成，发现滞后或质量偏差时向测试主管预警并协调执行层岗位补位；项目流转到 P14 时验收最终报告。",
+    previousPersona:
       "你是测试项目主管，挂在软件测试岗之下，是测试主管（org-test-lead）的直接下属，把控测试项目的进度与质量。你跟踪每个测试项目在测评中心流水线上走到了哪一步、总 Excel 测试表单各阶段表（项目信息表+策划表、需求分析表、用例表、问题报告单）是否按节点填齐填对，对照测试策划检查各环节产出是否按时按质完成。发现进度滞后或质量偏差时，你及时向测试主管预警并协调设计师/质量审查岗位补位，不让问题流到下一阶段。",
     responsibilities: [
+      "执行 P1 准入审查：只审查资料齐套性，输出 通过/不通过",
+      "把控测试项目进度，跟踪 P0~P14 节点文件夹流转位置",
+      "把控测试项目质量，核对各环节产出与表单",
+      "协调执行层岗位补位，向测试主管预警偏差",
+      "验收 P14 最终报告",
+    ],
+    previousResponsibilities: [
       "在总 Excel 测试表单中只填前 3 个 sheet：项目信息表（2 张）+ 策划表（1 张）",
       "把控测试项目进度，跟踪流水线各步骤节点",
       "把控测试项目质量，核对各阶段表单与产出",
       "协调设计师与质量审查岗位补位，向测试主管预警偏差",
     ],
-    previousResponsibilities: [
-      "把控测试项目进度，跟踪流水线各步骤节点",
-      "把控测试项目质量，核对各阶段表单与产出",
-      "协调设计师与质量审查岗位补位",
-      "向测试主管预警进度/质量偏差",
-    ],
-    capabilityTags: ["项目进度", "质量把控", "流水线推进"],
+    capabilityTags: ["准入审查", "项目进度", "质量把控", "P节点流转"],
     skillIds: ["pipeline-control", MANDATORY_SKILL_ID],
     capabilityIds: [
       "pipeline-control",
@@ -288,7 +309,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\21-文档审查"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -310,7 +331,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\22-静态分析"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -333,7 +354,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\23-代码审查"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -362,7 +383,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\24-动态测试"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -392,7 +413,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\25-报告编写"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -416,7 +437,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\31-表单质量审查"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -444,7 +465,7 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\32-报告质量审查"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\测试项目`],
     },
   },
   {
@@ -476,14 +497,16 @@ export const ORGANIZATION_ROLES: readonly OrganizationRoleSeed[] = [
     permissions: {
       requireApproval: true,
       allowComputerUse: false,
-      workspacePaths: ["D:\\Org\\40-办公主管"],
+      workspacePaths: [`${SIMULATED_FS_ROOT}\\办公项目`],
     },
   },
 ];
 
 /**
- * The seeded team: the test lead manages the 8 execution/QA reports. 软件编码岗
- * is deliberately left empty — the owner writes code directly.
+ * The seeded execution team: the P-node workforce (temporary employees, one
+ * full team per project, released when the project finishes). The project lead
+ * is a permanent employee in the management team, not part of the execution
+ * pool. 软件编码岗 is deliberately left empty — the owner writes code directly.
  */
 export interface OrganizationTeamSeed {
   id: string;
@@ -495,10 +518,9 @@ export interface OrganizationTeamSeed {
 
 export const ORGANIZATION_TEAM: OrganizationTeamSeed = {
   id: "org-test-team",
-  name: "测试团队",
+  name: "测试执行团队",
   managerEmployeeId: "org-test-lead",
   memberEmployeeIds: [
-    "org-test-project-lead",
     "org-test-designer-1",
     "org-test-designer-2",
     "org-test-designer-3",
@@ -511,14 +533,15 @@ export const ORGANIZATION_TEAM: OrganizationTeamSeed = {
 };
 
 /**
- * The management team: the chief steward manages the leads. 软件编码岗 stays an
- * empty container — the owner writes code directly.
+ * The management team (permanent employees): the chief steward manages the
+ * leads; the project lead joins as a permanent employee alongside the test
+ * lead. 软件编码岗 stays an empty container — the owner writes code directly.
  */
 export const MANAGEMENT_TEAM: OrganizationTeamSeed = {
   id: "mgmt-team",
   name: "管理团队",
   managerEmployeeId: "org-chief-steward",
-  memberEmployeeIds: ["org-test-lead", "org-dev-lead", "org-oa"],
+  memberEmployeeIds: ["org-test-lead", "org-test-project-lead", "org-dev-lead", "org-oa"],
   dispatchPolicy: "round-robin",
 };
 
@@ -550,9 +573,10 @@ function resolveContainerIds(workspaces: readonly Workspace[]): Map<ContainerKey
  *    name, promote project-lead rank 2→3 only on the v2 default, backfill
  *    skillIds (always merge-append mandatory file-operations), backfill
  *    capabilityIds, repoint legacy-container leads only on the seed default,
- *    assign teamId only when unset, and refresh persona/responsibilities only
- *    while they still match the previous seed default text, ensure dev-lead +
- *    mgmt-team exist, stamp v8.
+ *    assign teamId only when unset, refresh persona/responsibilities only while
+ *    they still match the previous seed default text, ensure dev-lead +
+ *    mgmt-team exist, move project-lead into the management team at rank 2
+ *    (v9), stamp v9.
  */
 export function ensureOrganizationSeed(
   settings: SharedSettings,
@@ -614,10 +638,17 @@ export function ensureOrganizationSeed(
       ) {
         patched.responsibilities = [...role.responsibilities];
       }
-      // v3: project-lead was rank 2 in v2; promote to 3 only when it still
-      // carries the v2 default — a user-set rank is preserved.
-      if (role.id === "org-test-project-lead" && patched.roleRank === 2) {
-        patched.roleRank = 3;
+      // v9: the project lead becomes a permanent management employee. Move it
+      // out of the execution team only while it still sits on the seed default
+      // team (a user-chosen team is preserved), and demote the v8 default rank 3
+      // to 2 (management level) — a user-set rank is preserved.
+      if (role.id === "org-test-project-lead") {
+        if (patched.teamId === "org-test-team" || patched.teamId === undefined) {
+          patched.teamId = "mgmt-team";
+        }
+        if (patched.roleRank === 3) {
+          patched.roleRank = 2;
+        }
       }
       // v4: seed the role's default skillIds only when the workspace has none
       // (undefined or empty). A non-empty set the user picked is not replaced.

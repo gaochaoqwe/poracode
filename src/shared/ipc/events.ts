@@ -25,6 +25,7 @@ import type { BrowserState, BrowserTabInfo } from "./procedures/browser";
 import type { BrowserLinkPresentationMode, CrossagentRoutingOverride } from "../settings";
 import type { IpcProcedurePayload, SupervisorProcedureName } from "./procedureMap";
 import type { MessageKey } from "../messages";
+import type { FlowDriverSnapshot } from "../digitalEmployee/flowSnapshot";
 
 export type SupervisorRequest = {
   [Name in SupervisorProcedureName]: {
@@ -64,6 +65,11 @@ export type SupervisorEvent =
       type: "employee-queue-snapshot";
       /** Supervisor → main: per-employee serial-queue snapshot after each state change. */
       snapshot: EmployeeQueueSnapshot;
+    }
+  | {
+      type: "flow-driver-snapshot";
+      /** Supervisor → main: one poll round of the digital-employee file-system driver. */
+      snapshot: FlowDriverSnapshot;
     }
   | {
       type: "crossagent-routing-override-changed";
@@ -264,6 +270,13 @@ export interface EmployeeQueueSnapshot {
  * event.
  */
 export type EmployeeQueueSnapshotEvent = EmployeeQueueSnapshot;
+
+/**
+ * Latest view of the supervisor's digital-employee file-system driver, broadcast
+ * to every renderer window whenever the supervisor emits a `flow-driver-snapshot`
+ * event (one poll round: in-progress test projects + their P0~P14 node states).
+ */
+export type FlowDriverSnapshotEvent = FlowDriverSnapshot;
 
 /** Project rows changed outside the renderer's persisted app-store snapshot. */
 export type ProjectStateChangedEvent = {

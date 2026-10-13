@@ -13,6 +13,7 @@ import {
   type AgentEmployeeBridge,
   type AgentEmployeeWindowKind,
   type EmployeeQueueSnapshotEvent,
+  type FlowDriverSnapshotEvent,
   type PrWatchMergedEvent,
   type PrWatchStatusEvent,
   type ProjectStateChangedEvent,
@@ -266,6 +267,15 @@ const bridge: AgentEmployeeBridge = {
     ipcRenderer.on(IPC_EVENT_CHANNELS.employeeQueueSnapshot, handler);
     return () => {
       ipcRenderer.removeListener(IPC_EVENT_CHANNELS.employeeQueueSnapshot, handler);
+    };
+  },
+  onFlowDriverSnapshot(listener) {
+    const handler = (_event: Electron.IpcRendererEvent, payload: FlowDriverSnapshotEvent) => {
+      listener(payload);
+    };
+    ipcRenderer.on(IPC_EVENT_CHANNELS.flowDriverSnapshot, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_EVENT_CHANNELS.flowDriverSnapshot, handler);
     };
   },
   submitQuickComposer(submission) {

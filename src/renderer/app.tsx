@@ -21,6 +21,7 @@ import { useAppStore } from "./state/appStore";
 import { applyProjectStateSnapshot } from "./state/projectStateSync";
 import { useThreadFollowUpQueueStore } from "./state/threadFollowUpQueueStore";
 import { installEmployeeQueueSnapshotSync } from "./state/employeeQueueSnapshotStore";
+import { installFlowDriverSnapshotSync } from "./state/flowDriverSnapshotStore";
 import { useGitReadModelStore } from "./state/gitReadModelStore";
 import {
   acknowledgeThread,
@@ -394,6 +395,7 @@ const mainWindowCleanups: Array<() => void> = isMainWindow
       installUpdateStatusSync(),
       installTaskInboxDelivery(),
       installEmployeeQueueSnapshotSync(),
+      installFlowDriverSnapshotSync(),
       // Thread-metadata commands issued from paired remote clients (mobile PWA).
       // They run through the same actions as local edits so persistence and
       // side effects (unload on archive, …) stay identical.

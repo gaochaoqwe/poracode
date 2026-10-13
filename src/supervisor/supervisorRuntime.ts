@@ -100,6 +100,8 @@ import { captureExperimentResponseSnapshot } from "./experimentResponseSnapshot"
 import { TeamDispatcher } from "./crossagentMcp/teamDispatcher";
 import { mergeWorkspaceDefaultConfig } from "./runtime/threadSession/spawnPipeline";
 import { isFullBypassApprovalPolicy } from "@/shared/agents/unrestrictedPermissions";
+import { SIMULATED_FS_ROOT } from "@/shared/digitalEmployee/flowLayout";
+import { FlowDriver } from "./digitalEmployee/flowDriver";
 
 export { detectWslAgentStatuses, writeSubmittedPrompt };
 
@@ -139,6 +141,10 @@ export class SupervisorRuntime {
   readonly generationService: GenerationService;
   readonly threadSessionManager: ThreadSessionManager;
   readonly teamDispatcher: TeamDispatcher;
+  /** 文件系统驱动：扫描模拟公司电脑文件夹并按 P 节点唤醒员工线程。 */
+  readonly flowDriver: FlowDriver;
+  /** 文件系统驱动派发的员工线程：roleId → threadId（用于忙碌判断）。 */
+  private readonly flowEmployeeThreads = new Map<string, string>();
   /** threadIds known to run inside the chief steward workspace. */
   private readonly chiefStewardThreadIds = new Set<string>();
   private readonly taskPollScheduler: TaskPollScheduler;
@@ -667,6 +673,65 @@ export class SupervisorRuntime {
     });
     this.taskPollScheduler.start();
 
+    // Digital-employee file-system driver: polls the simulated company folder
+    // tree (`模拟公司电脑文件夹`), runs the P-node flow algorithm, and wakes
+    // up each node owner's thread by dispatching a node task. Roles without a
+    // bound provider are skipped by the driver; the fs root defaults to the
+    // organization-seed placeholder and can be overridden per machine via
+    // `AGENTEMPLOYEE_SIMULATED_FS_ROOT`.
+    this.flowDriver = new FlowDriver({
+      fsRoot: process.env.AGENTEMPLOYEE_SIMULATED_FS_ROOT?.trim() || SIMULATED_FS_ROOT,
+      readSettings: () => this.sharedSettingsCache.read(),
+      onSnapshot: (snapshot) => {
+        emit({ type: "flow-driver-snapshot", snapshot });
+      },
+      isEmployeeBusy: (roleId) => {
+        const threadId = this.flowEmployeeThreads.get(roleId);
+        if (!threadId) return false;
+        const status = this.threadSessionManager
+          .getThreadSnapshots()
+          .find((snapshot) => snapshot.threadId === threadId)?.status;
+        return (
+          status === "launching" ||
+          status === "working" ||
+          status === "needs_reply" ||
+          status === "needs_approval"
+        );
+      },
+      spawnEmployee: async ({ workspace, projectDir, prompt }) => {
+        if (!workspace.agentKind) {
+          throw new Error(`Employee workspace "${workspace.id}" has no bound agentKind`);
+        }
+        // Approval leash: file-system-driven employee threads must never run on
+        // a full-bypass policy — same rule as team-dispatched member threads.
+        const effectiveConfig = mergeWorkspaceDefaultConfig(
+          { model: workspace.defaultThreadConfig?.model ?? "" },
+          workspace.defaultThreadConfig,
+        );
+        const config: ThreadConfig = {
+          model: workspace.defaultThreadConfig?.model ?? "",
+        };
+        if (
+          !effectiveConfig.approvalPolicy ||
+          isFullBypassApprovalPolicy(effectiveConfig.approvalPolicy)
+        ) {
+          config.approvalPolicy = "on-request";
+        }
+        const result = await this.threadSessionManager.startThread({
+          projectLocation: { kind: "windows", path: projectDir },
+          agentKind: workspace.agentKind,
+          ...(workspace.agentInstanceId ? { agentInstanceId: workspace.agentInstanceId } : {}),
+          config,
+          workspaceId: workspace.id,
+          prompt,
+          initialSize: { cols: 120, rows: 30 },
+        });
+        this.flowEmployeeThreads.set(workspace.id, result.threadId);
+      },
+      log: (...args: unknown[]) => console.warn("[flow-driver]", ...args),
+    });
+    this.flowDriver.start();
+
     this.sessions = this.threadSessionManager.sessions;
     this.shellSessions = this.threadSessionManager.shellSessions;
 
@@ -1187,6 +1252,7 @@ export class SupervisorRuntime {
     this.disposeWslCredentialProjectScope();
     this.routingOverridePersistence.dispose();
     this.taskPollScheduler.stop();
+    this.flowDriver.stop();
     this.usageService.stop();
     this.mcpProbeService.dispose();
     this.mcpOAuthService.dispose();

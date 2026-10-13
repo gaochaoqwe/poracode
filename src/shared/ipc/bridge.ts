@@ -15,6 +15,7 @@ import {
 import type {
   BrowserEvent,
   EmployeeQueueSnapshotEvent,
+  FlowDriverSnapshotEvent,
   PrWatchMergedEvent,
   PrWatchStatusEvent,
   ProjectStateChangedEvent,
@@ -86,6 +87,8 @@ export type AgentEmployeeBridge = AgentEmployeeInvokeBridge & {
   onTaskInboxItem(listener: (event: TaskInboxItemEvent) => void): () => void;
   /** Latest supervisor employee queue snapshot; broadcast to all windows. */
   onEmployeeQueueSnapshot(listener: (event: EmployeeQueueSnapshotEvent) => void): () => void;
+  /** Latest supervisor file-system driver snapshot; broadcast to all windows. */
+  onFlowDriverSnapshot(listener: (event: FlowDriverSnapshotEvent) => void): () => void;
   submitQuickComposer(submission: QuickComposerSubmission): Promise<void>;
   dismissQuickComposer(): Promise<void>;
   pickQuickComposerFiles(): Promise<string[] | null>;
@@ -165,6 +168,7 @@ export const IPC_EVENT_CHANNELS = {
   petBallMenuAction: createChannel("petBallMenuAction"),
   taskInboxItem: createChannel("taskInboxItem"),
   employeeQueueSnapshot: createChannel("employeeQueueSnapshot"),
+  flowDriverSnapshot: createChannel("flowDriverSnapshot"),
   quickComposerSubmit: createChannel("quickComposerSubmit"),
   quickComposerDismissRequested: createChannel("quickComposerDismissRequested"),
 } as const;

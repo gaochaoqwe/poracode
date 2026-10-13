@@ -96,6 +96,7 @@ import {
   isAgentStatusSupervisorEvent,
   quickComposerSubmissionSchema,
   type EmployeeQueueSnapshotEvent,
+  type FlowDriverSnapshotEvent,
   type PrWatchStatusEvent,
   type QuickComposerSubmission,
   type SupervisorEvent,
@@ -258,6 +259,9 @@ let taskInboxWatcher: TaskInboxWatcher | null = null;
 // Newest supervisor employee-queue snapshot (in-memory only; the supervisor
 // rebuilds queue state on restart, so main deliberately does not persist it).
 let latestEmployeeQueueSnapshot: EmployeeQueueSnapshotEvent | null = null;
+// Newest supervisor file-system driver snapshot (in-memory only; rebuilt on
+// every driver poll round).
+let latestFlowDriverSnapshot: FlowDriverSnapshotEvent | null = null;
 let quickComposerDialogOpen = false;
 let quickComposerDismissTimer: ReturnType<typeof setTimeout> | null = null;
 let revealMainAfterQuickComposerDismiss = false;
@@ -395,6 +399,21 @@ function maybeHandleEmployeeQueueSnapshot(event: SupervisorEvent): void {
   if (event.type !== "employee-queue-snapshot") return;
   latestEmployeeQueueSnapshot = event.snapshot;
   broadcastEmployeeQueueSnapshot();
+}
+
+function broadcastFlowDriverSnapshot(): void {
+  const snapshot = latestFlowDriverSnapshot;
+  if (!snapshot) return;
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (window.isDestroyed()) continue;
+    window.webContents.send(IPC_EVENT_CHANNELS.flowDriverSnapshot, snapshot);
+  }
+}
+
+function maybeHandleFlowDriverSnapshot(event: SupervisorEvent): void {
+  if (event.type !== "flow-driver-snapshot") return;
+  latestFlowDriverSnapshot = event.snapshot;
+  broadcastFlowDriverSnapshot();
 }
 
 function restartTaskInboxWatcher(settings: SharedSettings): void {
@@ -1075,6 +1094,7 @@ if (!hasSingleInstanceLock) {
           mainWindow?.webContents.send(IPC_EVENT_CHANNELS.supervisorEvent, event);
           forwardAgentStatusEventToQuickComposer(event);
           maybeHandleEmployeeQueueSnapshot(event);
+          maybeHandleFlowDriverSnapshot(event);
         },
         onReset: () => {
           workingThreads.clear();

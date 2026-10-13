@@ -124,10 +124,10 @@ describe("ensureOrganizationSeed", () => {
     expect(testLead.agentKind).toBe("user-chosen-provider");
     expect(testLead.persona).toBe("用户自定义的测试主管人设");
 
-    // v1 default names are upgraded to the v3 names.
+    // v1 default names are upgraded to the current names.
     expect(byId.get("org-oa")!.name).toBe("办公主管");
-    expect(byId.get("org-test-project-lead")!.name).toBe("测试项目主管");
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
+    expect(byId.get("org-test-project-lead")!.name).toBe("项目主管");
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
     expect(byId.get("org-test-designer-1")!.name).toBe("设计师（文档审查）");
     expect(byId.get("org-test-qa-1")!.name).toBe("质量审查（表单）");
 
@@ -140,7 +140,7 @@ describe("ensureOrganizationSeed", () => {
     expect(settings.organizationSeedVersion).toBe(ORGANIZATION_SEED_VERSION);
   });
 
-  it("v2 seed: renames default names and bumps project-lead rank 2→3", () => {
+  it("v2 seed: renames default names and keeps project-lead at rank 2", () => {
     // A v2 install: containers exist; org roles carry the v2 names and the v2
     // ranks (project-lead was rank 2). designer-2's name was customized by user.
     const v2Names: Record<string, string> = {
@@ -177,9 +177,9 @@ describe("ensureOrganizationSeed", () => {
     expect(byId.get("org-test-designer-5")!.name).toBe("设计师（编写报告）");
     expect(byId.get("org-test-qa-1")!.name).toBe("质量审查（表单）");
     expect(byId.get("org-test-qa-2")!.name).toBe("质量审查（报告）");
-    expect(byId.get("org-test-project-lead")!.name).toBe("测试项目主管");
-    // project-lead carried the v2 default rank 2 → promoted to 3.
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
+    expect(byId.get("org-test-project-lead")!.name).toBe("项目主管");
+    // project-lead carried the v2 default rank 2 → v9 keeps it at management rank 2.
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
     // User-customized name preserved.
     expect(byId.get("org-test-designer-2")!.name).toBe("我的静态分析岗");
 
@@ -201,7 +201,7 @@ describe("ensureOrganizationSeed", () => {
     const before = makeSettings({ workspaces: v2Workspaces, organizationSeedVersion: 2 });
     const { settings } = ensureOrganizationSeed(before, fixedClock);
 
-    // Not the v2 default (2), so the 2→3 bump does not fire.
+    // Not the v2 default (2), so the rank migration does not fire.
     expect(settings.workspaces.find((w) => w.id === "org-test-project-lead")?.roleRank).toBe(1);
   });
 
@@ -254,7 +254,7 @@ describe("ensureOrganizationSeed", () => {
     for (const memberId of ORGANIZATION_TEAM.memberEmployeeIds) {
       expect(ids).toContain(memberId);
     }
-    expect(ORGANIZATION_TEAM.memberEmployeeIds).toHaveLength(8);
+    expect(ORGANIZATION_TEAM.memberEmployeeIds).toHaveLength(7);
     expect(ORGANIZATION_TEAM.dispatchPolicy).toBe("round-robin");
 
     // v7: every employee hangs under the 软件测试岗 container, grouped by team.
@@ -278,7 +278,8 @@ describe("ensureOrganizationSeed", () => {
 
     const testLead = byId.get("org-test-lead")!;
     expect(testLead.persona).toContain("流水线");
-    expect(testLead.persona).toContain("总 Excel");
+    expect(testLead.persona).toContain("参考资料");
+    expect(testLead.persona).toContain("P0~P14");
     expect(testLead.capabilityTags).toContain("测试策划");
 
     const oa = byId.get("org-oa")!;
@@ -293,7 +294,7 @@ describe("ensureOrganizationSeed", () => {
 
     // v3 display names.
     const expectedNames: Record<string, string> = {
-      "org-test-project-lead": "测试项目主管",
+      "org-test-project-lead": "项目主管",
       "org-test-designer-1": "设计师（文档审查）",
       "org-test-designer-2": "设计师（静态分析）",
       "org-test-designer-3": "设计师（代码审查）",
@@ -305,8 +306,8 @@ describe("ensureOrganizationSeed", () => {
     for (const [id, name] of Object.entries(expectedNames)) {
       expect(byId.get(id)!.name).toBe(name);
     }
-    // project-lead shares the execution level (rank 3).
-    expect(byId.get("org-test-project-lead")!.roleRank).toBe(3);
+    // project-lead is a permanent management employee (rank 2).
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
   });
 
   it("seeds roles with no provider binding and approval required", () => {
@@ -494,12 +495,20 @@ describe("ensureOrganizationSeed", () => {
     const byId = new Map(settings.workspaces.map((w) => [w.id, w]));
     const testContainerId = "bootstrap-test";
 
-    // Management team members: chief(R1)/test-lead/dev-lead(R2)/oa(R2) → test container + mgmt-team.
-    for (const id of [CHIEF_STEWARD_ROLE_ID, "org-test-lead", "org-dev-lead", "org-oa"]) {
+    // Management team members: chief(R1)/test-lead/project-lead/dev-lead/oa(R2)
+    // → test container + mgmt-team (project lead is a permanent employee).
+    for (const id of [
+      CHIEF_STEWARD_ROLE_ID,
+      "org-test-lead",
+      "org-test-project-lead",
+      "org-dev-lead",
+      "org-oa",
+    ]) {
       const w = byId.get(id)!;
       expect(w.parentWorkspaceId).toBe(testContainerId);
       expect(w.teamId).toBe("mgmt-team");
     }
+    expect(byId.get("org-test-project-lead")!.roleRank).toBe(2);
     expect(byId.get("org-dev-lead")!.name).toBe("开发主管");
     expect(byId.get("org-dev-lead")!.roleRank).toBe(2);
 
@@ -516,7 +525,12 @@ describe("ensureOrganizationSeed", () => {
     expect(teamIds).toContain("mgmt-team");
     const mgmt = settings.teams.find((t) => t.id === "mgmt-team")!;
     expect(mgmt.managerEmployeeId).toBe(CHIEF_STEWARD_ROLE_ID);
-    expect(mgmt.memberEmployeeIds).toEqual(["org-test-lead", "org-dev-lead", "org-oa"]);
+    expect(mgmt.memberEmployeeIds).toEqual([
+      "org-test-lead",
+      "org-test-project-lead",
+      "org-dev-lead",
+      "org-oa",
+    ]);
   });
 
   it("v6→v7 migration: repoints leads/oa to test container, assigns teams, preserves user parent, idempotent", () => {
@@ -578,8 +592,8 @@ describe("ensureOrganizationSeed", () => {
     expect(devLead.persona).toContain("任务面板台账负责人");
     expect(devLead.capabilityIds).toEqual(["task-inbox", "doc-generation", "file-operations"]);
 
-    // project-lead only fills the first 3 sheets.
-    expect(byId.get("org-test-project-lead")!.responsibilities![0]).toContain("前 3 个 sheet");
+    // project-lead runs the P1 admission review (file-system flow).
+    expect(byId.get("org-test-project-lead")!.responsibilities![0]).toContain("准入审查");
 
     // designer-4 = case authoring + requirements analysis.
     expect(byId.get("org-test-designer-4")!.responsibilities).toEqual([

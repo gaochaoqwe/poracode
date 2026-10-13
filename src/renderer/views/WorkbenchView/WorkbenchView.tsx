@@ -6,6 +6,7 @@ import { useAppStore } from "@/renderer/state/appStore";
 import { OfficeView } from "@/renderer/views/OfficeView/OfficeView";
 import { TasksView } from "@/renderer/views/TasksView/TasksView";
 import { ProjectBoardPanel } from "./parts/ProjectBoardPanel";
+import { FlowDriverStrip } from "./parts/FlowDriverStrip";
 
 function WorkbenchTabButton({
   active,
@@ -61,7 +62,10 @@ export function WorkbenchView({ tab }: { tab: WorkbenchTab }) {
           <WorkbenchTabButton active={tab === "tasks"} onSelect={() => openWorkbench("tasks")}>
             <Trans>Task board</Trans>
           </WorkbenchTabButton>
-          <WorkbenchTabButton active={tab === "projects"} onSelect={() => openWorkbench("projects")}>
+          <WorkbenchTabButton
+            active={tab === "projects"}
+            onSelect={() => openWorkbench("projects")}
+          >
             <Trans>Project board</Trans>
           </WorkbenchTabButton>
           <WorkbenchTabButton active={tab === "office"} onSelect={() => openWorkbench("office")}>
@@ -97,7 +101,12 @@ export function WorkbenchView({ tab }: { tab: WorkbenchTab }) {
       {tab === "tasks" ? (
         <TasksView embedded />
       ) : tab === "projects" ? (
-        <ProjectBoardPanel />
+        <div className="flex h-full min-h-0 flex-col">
+          <FlowDriverStrip />
+          <div className="min-h-0 flex-1">
+            <ProjectBoardPanel />
+          </div>
+        </div>
       ) : (
         <OfficeView tab={tab} brutalist={brutalist} />
       )}
